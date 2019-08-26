@@ -217,6 +217,40 @@ class ComparisonTable extends Component {
         return this.renderRowCells(config);
     }
 
+    renderRowCellsDuplicateDictonaryConfig({resultType, getUrl, showLabelConfig, urlParameter=''}) {
+        const showGeneralResults = this.showGeneralResults(showLabelConfig, getUrl, urlParameter);
+        const config = {
+            resultType: resultType,
+            ifPassed: function (details, ibName) {
+                let tooltipContent = <p><strong>All good!</strong> Click for more info.</p>;
+                let cellInfo = renderLabel(
+                    {
+                        colorType: 'success',
+                        glyphicon: 'glyphicon-search',
+                        tooltipContent,
+                        link: getUrl(details.arch, ibName)
+                    }
+                );
+                return renderCell(cellInfo);
+            },
+            ifError: function (details, ibName) {
+                let tooltipContent = <p><strong>Duplicate dictionary found!</strong> Click for more info.</p>;
+                let cellInfo = renderLabel(
+                    {
+                        colorType: 'danger',
+                        glyphicon: 'glyphicon-search',
+                        tooltipContent,
+                        link: getUrl(details.arch, ibName)
+                    }
+                );
+                return renderCell(cellInfo);
+            },
+            ifFailed: showGeneralResults,
+            ifWarning: showGeneralResults
+        };
+        return this.renderRowCells(config);
+    }
+
     renderRelVals({resultType, getUrl, showLabelConfig}) {
         const showRelValsResults = this.showRelValsResults(showLabelConfig, getUrl);
         const config = {
@@ -270,6 +304,10 @@ class ComparisonTable extends Component {
     showGeneralResults(showLabelConfig, getUrl, urlParameter) {
         return function (result, ib) {
             const {details, done} = result;
+            if  (! details ) {
+                console.error("empty 'details'object");
+                return renderCell()
+            }
             const resultKeys = Object.keys(details); //get all object properties name
             let labelConfig = {value: 0};
 
@@ -501,35 +539,16 @@ class ComparisonTable extends Component {
                             )}
                         </tr>
                     : null}
-                    {/* TODO check if the value exists*/}
-                    <tr>
-                        <td className={'name-column'}><b>Q/A</b></td>
-                        {archsByIb.map(item => {
-                            return item.archs.map(arch => {
-                                return (
-                                    renderCell(
-                                        renderLabel(
-                                            {
-                                                colorType: "success",
-                                                glyphicon: "glyphicon-search",
-                                                link: urls.q_a(arch, item.name)
-                                            }
-                                        )
-                                    )
-                                )
-                            })
-                        })}
-                    </tr>
-                    {/*{ this.shouldShowRow("dupDict") ?*/}
-                        {/*<tr>*/}
-                            {/*<td className={'name-column'}><b>Unit Tests</b></td>*/}
-                            {/*{this.renderRowCellsWithDefaultPreConfig({*/}
-                                    {/*resultType: 'dupDict',*/}
-                                    {/*getUrl: getBuildOrUnitUrl*/}
-                                {/*}*/}
-                            {/*)}*/}
-                        {/*</tr>*/}
-                        {/*: null}*/}
+                    { this.shouldShowRow("dupDict") ?
+                        <tr>
+                            <td className={'name-column'}><b>Q/A</b></td>
+                            {this.renderRowCellsDuplicateDictonaryConfig({
+                                    resultType: 'dupDict',
+                                    getUrl: urls.q_a
+                                }
+                            )}
+                        </tr>
+                        : null}
                     </tbody>
                 </Table>
             </div>
