@@ -240,6 +240,28 @@ export const config = {
             }
         },
         {
+            //add_piechart_link
+            name: "Resources Piecharts",
+            key: "piechart",
+            getUrl: function (ib, result) {
+                return "https://cmssdt.cern.ch/circles/web/piechart.html?local=false&dataset="+ getCurrentIbTag(ib)+"%2F"+result.arch+"%2F23434.21%2Fstep3_RAW2DIGI_L1Reco_RECO_RECOSIM_PU.resources&resource=time_thread&colours=default&groups=reco_PhaseII&threshold=0";
+            },
+            ifInProgress: function() {
+                return null;
+            }
+        },
+        {
+            name: "RECO event loop",
+            key: "reco_event_loop",
+            getUrl: function (ib, result) {
+                return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/igprof/"
+                    + getCurrentIbTag(ib) + '/' + result.arch + "/profiling/sorted_RES_CPU_step3.txt";
+            },
+            ifInProgress: function() {
+                return null;
+            }
+        },
+        {
             name: "Static Analyzer",
             key: "static_checks_v2",
             getUrl: function (ib, result) {
