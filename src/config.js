@@ -242,13 +242,12 @@ export const config = {
         {
             //add_piechart_link
             name: "Resources Piecharts",
-            key: "profiling",
+            key: "piechart",
             getUrl: function (ib, result) {
                 return "https://cmssdt.cern.ch/circles/web/piechart.html?local=false&dataset="+ getCurrentIbTag(ib)+"/" + result.data;
             }
         },
         {
-            //add_reco_event_loop_link
             name: "RECO event loop",
             key: "reco_event_loop",
             getUrl: function (ib, result) {
