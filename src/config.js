@@ -240,6 +240,22 @@ export const config = {
             }
         },
         {
+            //add_piechart_link
+            name: "Resources Piecharts",
+            key: "piechart",
+            getUrl: function (ib, result) {
+                return "https://cmssdt.cern.ch/circles/web/piechart.html?local=false&dataset="+ getCurrentIbTag(ib)+"/" + result.data + "&resource=time_thread&colours=default&groups=reco_PhaseII&threshold=0";
+            }
+        },
+        {
+            name: "RECO event loop",
+            key: "reco_event_loop",
+            getUrl: function (ib, result) {
+                return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/igprof/"
+                    + getCurrentIbTag(ib) + "/" + result.data;
+            }
+        },
+        {
             name: "Static Analyzer",
             key: "static_checks_v2",
             getUrl: function (ib, result) {
