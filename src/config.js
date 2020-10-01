@@ -244,7 +244,7 @@ export const config = {
             name: "Resources Piecharts",
             key: "piechart",
             getUrl: function (ib, result) {
-                return "https://cmssdt.cern.ch/circles/web/piechart.html?local=false&dataset="+ getCurrentIbTag(ib)+"/" + result.data + "&resource=time_thread&colours=default&groups=reco_PhaseII&threshold=0";
+                return "https://cmssdt.cern.ch/circles/web/piechart.php?local=false&dataset="+ getCurrentIbTag(ib)+"/" + result.data + "&resource=time_thread&colours=default&groups=reco_PhaseII&threshold=0";
             }
         },
         {
