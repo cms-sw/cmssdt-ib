@@ -264,7 +264,7 @@ export const config = {
             },
         },
         {
-            name: "SA thread unsafe",
+            name: "SA thread unsafe modules",
             key: "static_checks_v2",
             getUrl: function (ib, result) {
                 return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/ib-static-analysis/"
@@ -299,6 +299,17 @@ export const config = {
             getUrl: function (ib, result) {
                 return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/ib-static-analysis/"
                     + getCurrentIbTag(ib) + '/' + result.arch + "/reports/tlf2esd.txt";
+            },
+            ifInProgress: function() {
+                return null;
+            }
+        },
+        {
+            name: "SA EventSetupRecord::get called",
+            key: "static_checks_v2",
+            getUrl: function (ib, result) {
+                return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/ib-static-analysis/"
+                    + getCurrentIbTag(ib) + '/' + result.arch + "/reports/eventsetuprecord-get.txt";
             },
             ifInProgress: function() {
                 return null;
