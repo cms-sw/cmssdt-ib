@@ -309,7 +309,7 @@ export const config = {
             key: "static_checks_v2",
             getUrl: function (ib, result) {
                 return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/ib-static-analysis/"
-                    + getCurrentIbTag(ib) + '/' + result.arch + "/reports/eventsetuprecord-get.txt";
+                    + getCurrentIbTag(ib) + '/' + result.arch + "/reports/eventsetuprecord-get.yaml";
             },
             ifInProgress: function() {
                 return null;
