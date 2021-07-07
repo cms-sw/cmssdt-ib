@@ -36,7 +36,7 @@ export const showLabelConfig = {
             color: "success"
         }
     ],
-    gpu: [{
+    num_fails: [{
         groupFields: ["num_fails"],
         color: "danger"
     }],
@@ -202,10 +202,17 @@ export const config = {
         {
             //add_hlt_tests_link
             key: "hlt_tests",
-            name: "HLT Validation",
+            name: "HLT",
             getUrl: function (ib) {
                 return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/HLT-Validation/" + getCurrentIbTag(ib);
-            }
+            },
+            ifError: function(ib, result) {
+                return {
+                    name: this.name,
+                    glyphicon: "glyphicon-remove",
+                    url:  this.getUrl(ib),
+                    labelColor: "red"
+            }}
         },
         {
             //add_valgrind_tests_link
@@ -443,7 +450,7 @@ export const config = {
                 if (result_element.passed === STATUS_ENUM.passed){
                     return STATUS_ENUM.passed;
                 }
-                let labelelType = checkLabelType(showLabelConfig.gpu, result_element.details);
+                let labelelType = checkLabelType(showLabelConfig.num_fails, result_element.details);
                 switch (labelelType.colorType) {
                     case "danger" :
                         return STATUS_ENUM.error;
@@ -491,7 +498,7 @@ export const config = {
                 if (result_element.passed === STATUS_ENUM.passed){
                     return STATUS_ENUM.passed;
                 }
-                let labelelType = checkLabelType(showLabelConfig.gpu, result_element.details);
+                let labelelType = checkLabelType(showLabelConfig.num_fails, result_element.details);
                 switch (labelelType.colorType) {
                     case "danger" :
                         return STATUS_ENUM.error;
