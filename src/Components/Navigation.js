@@ -121,6 +121,11 @@ class Navigation extends Component {
                             {olderLinks}
                         </NavDropdown>
                     </Nav>
+   		    <Nav>
+    		        <NavItem href="https://monit-grafana.cern.ch/d/HtKKjajMz/profiling?orgId=11">
+    			    IB Profiling results
+    		        </NavItem>
+    		    </Nav>
                     <Nav pullRight>
                         <OverlayTrigger placement="left" overlay={popoverHelp}>
                             <button className="btn btn-default navbar-btn" onClick={this.handleShow}>
