@@ -122,7 +122,7 @@ class Navigation extends Component {
                         </NavDropdown>
                     </Nav>
    		    <Nav>
-    		        <NavItem href="https://monit-grafana.cern.ch/d/HtKKjajMz/profiling?orgId=11">
+    		        <NavItem href="https://monit-grafana.cern.ch/d/000000530/cms-monitoring-project?viewPanel=60&orgId=11">
     			    IB Profiling results
     		        </NavItem>
     		    </Nav>
