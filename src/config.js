@@ -378,6 +378,20 @@ export const config = {
             }}
         },
         {
+            name: "UBSAN runtime errors",
+            key: "ubsan-logs",
+            getUrl: function (ib) {
+                return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/ubsan_logs/" + getCurrentIbTag(ib);
+            },
+            ifError: function(ib, result) {
+                return {
+                    name: this.name,
+                    glyphicon: "glyphicon-remove",
+                    url:  this.getUrl(ib),
+                    labelColor: "red"
+            }}
+        },
+        {
             name: "FWLite",
             key: "fwlite",
             getUrl: function (ib) {
