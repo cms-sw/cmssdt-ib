@@ -378,7 +378,7 @@ export const config = {
             }}
         },
         {
-            name: "UBSAN runtime errors",
+            name: "UBSAN",
             key: "ubsan-logs",
             getUrl: function (ib) {
                 return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/ubsan_logs/" + getCurrentIbTag(ib);
