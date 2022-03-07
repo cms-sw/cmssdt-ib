@@ -451,6 +451,7 @@ class ComparisonTable extends Component {
                                 };
                                 let link, tooltipText;
                                 let patchOrFullBuild = '---';
+                                let labelType = 'default';
                                 let {cmsdistTags, current_tag} = item;
                                 let cmsdistTag = cmsdistTags[arch];
                                 if (cmsdistTag === "Not Found") {
@@ -463,12 +464,13 @@ class ComparisonTable extends Component {
                                     } else {
                                         tooltipText = 'See cmsdist tag used for this build';
                                         patchOrFullBuild = 'Full Build';
+                                        labelType = 'success';
                                     }
                                 }
                                 return (
                                     <th key={uuid.v4()}>
                                         {(link) ? renderTooltip(linkWrapper(link, cellContent()), tooltipText) : cellContent()}
-                                        <Label bsStyle="default"> {patchOrFullBuild}</Label>
+                                        <Label bsStyle={labelType}> {patchOrFullBuild}</Label>
                                     </th>
                                 );
                             })
