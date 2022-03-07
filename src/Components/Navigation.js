@@ -98,6 +98,12 @@ class Navigation extends Component {
                         <a><span class="glyphicon glyphicon-list-alt"/><span> HLT Validation </span></a>- test results
                         are ready
                     </p>
+                    <p>
+                        <a><span class="glyphicon glyphicon-ok"/><span> FWLite </span></a>- test passed
+                    </p>
+                    <p>
+                        <a><span class="glyphicon glyphicon-remove"/><span> FWLite </span></a>- test failed
+                    </p>
                 </Modal.Body>
                 <Modal.Footer>
                     <Button onClick={this.handleClose}>Close</Button>

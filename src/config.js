@@ -159,8 +159,8 @@ export const config = {
         {
             //add_comp_baseline_tests_link
             key: "comp_baseline",
-            glyphicon: "glyphicon-ok-sign",
-            glyphiconWarning: "glyphicon-warning-sign",
+            glyphicon: "glyphicon-ok",
+            glyphiconWarning: "glyphicon-remove",
             name: "Comparison Baseline",
             getUrl: function (ib) {
                 return ib.comp_baseline;
@@ -341,8 +341,8 @@ export const config = {
         {
             name: "Material budget comparison",
             key: "material_budget_comparison",
-            glyphicon: "glyphicon-ok-sign",
-            glyphiconWarning: "glyphicon-warning-sign",
+            glyphicon: "glyphicon-ok",
+            glyphiconWarning: "glyphicon-remove",
             getUrl: function (ib, result) {
                 return "/SDT/jenkins-artifacts/material-budget/" + getCurrentIbTag(ib) + '/' + result.arch + "/comparison";
             },
