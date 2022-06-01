@@ -214,7 +214,7 @@ export const config = {
                     labelColor: "red"
             }}
         },
-	{
+        {
             //add_crab_tests_link
             key: "crab_tests",
             name: "Crab",
