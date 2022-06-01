@@ -214,6 +214,21 @@ export const config = {
                     labelColor: "red"
             }}
         },
+	{
+            //add_crab_tests_link
+            key: "crab_tests",
+            name: "Crab",
+            getUrl: function (ib) {
+                return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/ib-run-crab/" + getCurrentIbTag(ib);
+            },
+            ifError: function(ib, result) {
+                return {
+                    name: this.name,
+                    glyphicon: "glyphicon-remove",
+                    url:  this.getUrl(ib),
+                    labelColor: "red"
+            }}
+        },
         {
             //add_valgrind_tests_link
             key: "valgrind",
