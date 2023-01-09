@@ -327,17 +327,6 @@ export const config = {
             }
         },
         {
-            name: "SA EventSetupRecord::get called",
-            key: "static_checks_v2",
-            getUrl: function (ib, result) {
-                return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/ib-static-analysis/"
-                    + getCurrentIbTag(ib) + '/' + result.arch + "/reports/eventsetuprecord-get.yaml";
-            },
-            ifInProgress: function() {
-                return null;
-            }
-        },
-        {
             // NOTE JSON usually empty
             glyphicon: "glyphicon-warning-sign",
             key: "RVExceptions",
