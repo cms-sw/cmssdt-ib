@@ -278,6 +278,14 @@ export const config = {
             }
         },
         {
+            name: "RECO GPU module timings",
+            key: "reco_gpu_mods",
+            getUrl: function (ib, result) {
+                return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/profiling/"
+                    + getCurrentIbTag(ib) + "/" + result.data;
+            }
+        },
+        {
             name: "Static Analyzer",
             key: "static_checks_v2",
             getUrl: function (ib, result) {
