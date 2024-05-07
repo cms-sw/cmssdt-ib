@@ -4,7 +4,7 @@
   "private": true,
   "homepage": ".",
   "dependencies": {
-    "axios": "1.6.0",
+    "axios": "0.28.0",
     "axios-cache-plugin": "0.1.0",
     "bootstrap": "3.4.1",
     "flux": "3.1.3",
