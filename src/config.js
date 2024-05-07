@@ -262,6 +262,14 @@ export const config = {
             }
         },
         {
+            //add_igprof_tests_link
+            key: "vtune",
+            name: "Vtune",
+            getUrl: function (ib) {
+                return "https://cmssdt.cern.ch/vtune/ui/" + getCurrentIbTag(ib);
+            }
+        },
+        {
             //add_piechart_link
             name: "Resources Piecharts",
             key: "piechart",
