@@ -265,8 +265,8 @@ export const config = {
             //add_igprof_tests_link
             key: "vtune",
             name: "Vtune",
-            getUrl: function (ib) {
-                return "https://cmssdt.cern.ch/vtune/ui/" + getCurrentIbTag(ib) + "/23834.21/r-step3-23834.21-hs";
+            getUrl: function (ib, result) {
+                return "https://cmssdt.cern.ch/vtune/ui/" + getCurrentIbTag(ib) + "/" + result.arch + "/23834.21/r-step3-23834.21-hs";
             }
         },
         {
