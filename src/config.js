@@ -266,7 +266,7 @@ export const config = {
             key: "vtune",
             name: "Vtune",
             getUrl: function (ib, result) {
-                return "https://cmssdt.cern.ch/vtune/ui/" + getCurrentIbTag(ib) + "/" + result.arch + "/23834.21/r-step3-23834.21-hs";
+                return "https://cmssdt.cern.ch/vtune/ui/" + getCurrentIbTag(ib) + "/" + result.data + "/r-step3-11834.21-hs";
             }
         },
         {
