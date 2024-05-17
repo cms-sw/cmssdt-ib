@@ -218,8 +218,10 @@ export const config = {
             name: "HLT Timing Piecharts",
             key: "hlt_timings",
             getUrl: function (ib, result) {
-                     // https://cmssdt.cern.ch/circles/web/hlt.php?local=false&dataset=CMSSW_14_1_X_2024-05-14-2300%2FPhase2Timing_resources&resource=time_real&colours=default&groups=packages&threshold=0
-                return "https://cmssdt.cern.ch/circles/web/hlt.php?local=false&dataset="+ getCurrentIbTag(ib)+"/Phase2Timing_resources&resource=time_real&colours=default&groups=packages&threshold=0";
+                return "https://cmssdt.cern.ch/circles/web/hlt.php?filter="+getCurrentIbTag(ib)+"&dataset="+ getCurrentIbTag(ib)+"/Phase2Timing_resources";
+            },
+            ifInProgress: function() {
+                return null;
             }
         },
         {
