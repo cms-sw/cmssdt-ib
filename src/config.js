@@ -214,6 +214,16 @@ export const config = {
                     labelColor: "red"
             }}
         },
+	{
+            name: "HLT Timing Piecharts",
+            key: "hlt_timings",
+            getUrl: function (ib, result) {
+                return "https://cmssdt.cern.ch/circles/web/hlt.php?filter="+getCurrentIbTag(ib)+"&dataset="+ getCurrentIbTag(ib)+"/Phase2Timing_resources";
+            },
+            ifInProgress: function() {
+                return null;
+            }
+        },
         {
             //add_crab_tests_link
             key: "crab_tests",
