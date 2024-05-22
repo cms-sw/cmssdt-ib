@@ -215,8 +215,8 @@ export const config = {
             }}
         },
 	{
-            name: "HLT Timing Piecharts",
-            key: "hlt_timings",
+            name: "HLT Phase2 Timing",
+            key: "hlt-p2-timing",
             getUrl: function (ib, result) {
                 return "https://cmssdt.cern.ch/circles/web/hlt.php?filter="+getCurrentIbTag(ib)+"&dataset="+ getCurrentIbTag(ib)+"/Phase2Timing_resources";
             },
