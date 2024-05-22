@@ -218,7 +218,7 @@ export const config = {
             name: "HLT Phase2 Timing",
             key: "hlt-p2-timing",
             getUrl: function (ib, result) {
-                return "https://cmssdt.cern.ch/circles/web/hlt.php?filter="+getCurrentIbTag(ib)+"&dataset="+ getCurrentIbTag(ib)+"/Phase2Timing_resources";
+                return "https://cmssdt.cern.ch/circles/web/hlt-p2-timing.php?filter="+getCurrentIbTag(ib)+"&dataset="+ getCurrentIbTag(ib)+"/Phase2Timing_resources";
             },
             ifInProgress: function() {
                 return null;
