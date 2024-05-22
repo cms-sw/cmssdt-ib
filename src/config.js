@@ -284,7 +284,7 @@ export const config = {
             name: "Resources Piecharts",
             key: "piechart",
             getUrl: function (ib, result) {
-                return "https://cmssdt.cern.ch/circles/web/piechart.php?resource=time_thread&filter="+getCurrentIbTag(ib)+"&dataset="+ getCurrentIbTag(ib)+"/" + result.data;
+                return "https://cmssdt.cern.ch/circles/web/piechart.php?data_name=profiling&resource=time_thread&filter="+getCurrentIbTag(ib)+"&dataset="+ getCurrentIbTag(ib)+"/" + result.data;
             }
         },
         {
