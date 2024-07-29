@@ -230,6 +230,19 @@ export const config = {
             getUrl: function (ib, result) {
                 return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/" + result.data;
             },
+            customResultInterpretation: function (result) {
+                if (result === "inprogress") {
+                    return result;
+                }
+                return result.status;
+            },
+            ifError: function(ib, result) {
+                return {
+                    name: this.name,
+                    glyphicon: "glyphicon-remove",
+                    url:  this.getUrl(ib),
+                    labelColor: "red"
+            }},
             ifInProgress: function() {
                 return null;
             }
