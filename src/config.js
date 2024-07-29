@@ -226,9 +226,9 @@ export const config = {
         },
         {
             name: "Class Versions",
-            key: "class-versions",
+            key: "class_versions",
             getUrl: function (ib, result) {
-                return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/class_versions/" + getCurrentIbTag(ib);
+                return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/class_versions/" + ib.class_versions.data;
             },
             ifError: function(ib, result) {
                 return {
