@@ -225,6 +225,16 @@ export const config = {
             }
         },
         {
+            name: "Class Versions",
+            key: "class-versions",
+            getUrl: function (ib, result) {
+                return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/" + result.data;
+            },
+            ifInProgress: function() {
+                return null;
+            }
+        },
+        {
             //add_crab_tests_link
             key: "crab_tests",
             name: "Crab",
