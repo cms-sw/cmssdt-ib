@@ -242,6 +242,23 @@ export const config = {
             }
         },
         {
+            name: "Clang Analyzer",
+            key: "clang_analyzer",
+            getUrl: function (ib, result) {
+                return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/" + ib.clang_analyzer.data;
+            },
+            ifError: function(ib, result) {
+                return {
+                    name: this.name,
+                    glyphicon: "glyphicon-remove",
+                    url:  this.getUrl(ib),
+                    labelColor: "red"
+            }},
+            ifInProgress: function() {
+                return null;
+            }
+        },
+        {
             //add_crab_tests_link
             key: "crab_tests",
             name: "Crab",
