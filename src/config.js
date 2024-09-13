@@ -254,6 +254,13 @@ export const config = {
                     url:  this.getUrl(ib),
                     labelColor: "red"
             }},
+            ifWarning: function (ib) {
+                return {
+                    name: this.name,
+                    glyphicon: "glyphicon-warning-sign",
+                    url: this.getUrl(ib),
+                    labelColor: "orange"
+            }},
             ifInProgress: function() {
                 return null;
             }
