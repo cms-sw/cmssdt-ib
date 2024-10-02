@@ -224,7 +224,7 @@ export const config = {
                 return {
                     name: this.name,
                     glyphicon: "glyphicon-remove",
-                    url:  "https://cmssdt.cern.ch/SDT/jenkins-artifacts/hlt-p2-timing/"+getCurrentIbTag(ib)+"/"+result.arch,
+                    url:  "https://cmssdt.cern.ch/SDT/jenkins-artifacts/hlt-p2-timing/"+getCurrentIbTag(ib),
                     labelColor: "red"
             }},
             ifInProgress: function() {
