@@ -163,15 +163,30 @@ export function getStructureFromAvalableRelVals(relvalInfoObject) {
             config[date][que] = {
                 flavors: {},
                 allArchs: [],
+		allGPUs: [],
                 dataLoaded: false
             }
         }
         config[date][que].flavors[flavor] = {};
-        archs.forEach(arch => {
-            config[date][que].flavors[flavor][arch] = {date, que, flavor, arch};
+        let uarchs = [];
+	let ugpus = [];
+        archs.forEach(archx => {
+            let parts = archx.split(":");
+            let arch = parts.shift();
+	    if (!config[date][que].flavors[flavor][arch]){
+              config[date][que].flavors[flavor][arch] = {}
+	    }
+	    let gpu = "";
+            config[date][que].flavors[flavor][arch][""] = {date, que, flavor, arch, gpu}
+	    uarchs.push(arch);
+            parts.forEach(gpu => {
+                config[date][que].flavors[flavor][arch][gpu] = {date, que, flavor, arch, gpu};
+		ugpus.push(gpu)
             // TODO sort config[date][que].flavors[flavor] somehow, for now it is sorted at 2 places
+            });
         });
-        config[date][que].allArchs = _.uniq(config[date][que].allArchs.concat(archs));
+	config[date][que].allArchs = _.uniq(config[date][que].allArchs.concat(uarchs));
+	config[date][que].allGPUs = _.uniq(config[date][que].allGPUs.concat(ugpus));
     });
     return config;
 }
@@ -218,7 +233,7 @@ export function valueInTheList(list = [], value) {
     }
 }
 
-export function filterRelValStructure({structure, selectedArchs, selectedFlavors, selectedStatus}) {
+export function filterRelValStructure({structure, selectedArchs, selectedGPUs, selectedFlavors, selectedStatus}) {
     /**
      * This will return selected relvals .
      */
@@ -234,20 +249,25 @@ export function filterRelValStructure({structure, selectedArchs, selectedFlavors
             let filteredArchKeys = filterNameList(archKeys, selectedArchs);
             for (let x = 0; x < filteredArchKeys.length; x++) {
                 const archKey = filteredArchKeys[x];
-                const {id} = relVal;
-                const fullRelVal = flavors[flavor][archKey][id];
-                if (fullRelVal) {
-                    // check if RelVal is Failed | KNOWN_FAILED | PASSED
-                    if (doMarkAsFailed(fullRelVal)) {
-                        // if workflow is failed at least in one ib, mark all row failed
-                        statusMap[STATUS_ENUM.FAILED] = true;
-                    } else if (!(statusMap === STATUS_ENUM.FAILED) && isRelValKnownFailed(fullRelVal)) {
-                        // if no failed
-                        statusMap[STATUS_ENUM.KNOWN_FAILED] = true;
-                    } else if (!(statusMap === STATUS_ENUM.FAILED) && !(statusMap === STATUS_ENUM.KNOWN_FAILED)) {
-                        // if no failed and known_failed
-                        statusMap[STATUS_ENUM.PASSED] = true;
-                    }
+		let gpuKeys = getObjectKeys(flavors[flavor][archKey]);
+		let filteredGPUKeys = filterNameList(gpuKeys, selectedGPUs);
+		for(let y = 0; y < filteredGPUKeys.length; y++) {
+		    const gpuKey = filteredGPUKeys[y];
+                    const {id} = relVal;
+                    const fullRelVal = flavors[flavor][archKey][gpuKey][id];
+                    if (fullRelVal) {
+                        // check if RelVal is Failed | KNOWN_FAILED | PASSED
+                        if (doMarkAsFailed(fullRelVal)) {
+                            // if workflow is failed at least in one ib, mark all row failed
+                            statusMap[STATUS_ENUM.FAILED] = true;
+                        } else if (!(statusMap === STATUS_ENUM.FAILED) && isRelValKnownFailed(fullRelVal)) {
+                            // if no failed
+                            statusMap[STATUS_ENUM.KNOWN_FAILED] = true;
+                        } else if (!(statusMap === STATUS_ENUM.FAILED) && !(statusMap === STATUS_ENUM.KNOWN_FAILED)) {
+                            // if no failed and known_failed
+                            statusMap[STATUS_ENUM.PASSED] = true;
+                        }
+	            }
                 }
             }
         }

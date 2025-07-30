@@ -42,6 +42,13 @@ class RelValStore extends EventEmitter {
         }
     }
 
+    getAllGPUsForQue({date, que}) {
+        const allQueInfo = this._getQueData({date, que});
+        if (allQueInfo) {
+            return allQueInfo.allGPUs
+        }
+    }
+
     getAllFlavorsForQue({date, que}) {
         const allQueInfo = this._getQueData({date, que});
         if (allQueInfo) {
@@ -60,11 +67,14 @@ class RelValStore extends EventEmitter {
                     allFlavors.forEach(flavorName => {
                         const archs = Object.keys(flavors[flavorName]);
                         archs.forEach(arch => {
-                            archsToLoad.push(flavors[flavorName][arch]);
+			    const gpus =  Object.keys(flavors[flavorName][arch]);
+			    gpus.forEach(gpu => {
+                              archsToLoad.push(flavors[flavorName][arch][gpu]);
+			    })
                         })
                     });
-                    const relValsUrl = archsToLoad.map(i => urls.relValsResult(i.arch, i.date, i.que, i.flavor));
-                    const relValsIdToHashcodeUrl = archsToLoad.map(i => urls.relValWorkFlowToIdHash(i.arch, i.date, i.que, i.flavor));
+                    const relValsUrl = archsToLoad.map(i => urls.relValsResult(i.arch, i.date, i.que, i.flavor, i.gpu));
+                    const relValsIdToHashcodeUrl = archsToLoad.map(i => urls.relValWorkFlowToIdHash(i.arch, i.date, i.que, i.flavor, i.gpu));
 
                     // load RelVals status and structure it
                     getMultipleFiles({
@@ -73,7 +83,7 @@ class RelValStore extends EventEmitter {
                             for (let i = 0; i < archsToLoad.length; i++) {
                                 const {data: relvals} = responseList[i];
                                 const workflowHashes = responseList[archsToLoad.length + i].data;
-                                const {que, date, arch, flavor} = archsToLoad[i];
+                                const {que, date, arch, flavor, gpu} = archsToLoad[i];
                                 let relValObject = transforListToObject(relvals);
                                 const workflowKeys = Object.keys(relValObject);
                                 workflowKeys.forEach(wf => {
@@ -83,7 +93,7 @@ class RelValStore extends EventEmitter {
                                         steps[s]['workflowHash'] = workflowHash;
                                     }
                                 });
-                                this.structure[date][que].flavors[flavor][arch] = relValObject;
+                                this.structure[date][que].flavors[flavor][arch][gpu] = relValObject;
                                 // to add statistics to relVals
                                 if (!this.structure[date][que].relvalStatus) {
                                     this.structure[date][que].relvalStatus = {};
@@ -91,7 +101,10 @@ class RelValStore extends EventEmitter {
                                 if (!this.structure[date][que].relvalStatus[flavor]) {
                                     this.structure[date][que].relvalStatus[flavor] = {};
                                 }
-                                this.structure[date][que].relvalStatus[flavor][arch] = relValStatistics(relvals);
+				if (!this.structure[date][que].relvalStatus[flavor][arch]) {
+                                    this.structure[date][que].relvalStatus[flavor][arch] = {};
+                                }
+                                this.structure[date][que].relvalStatus[flavor][arch][gpu] = relValStatistics(relvals);
                                 // ---
                                 workflowKeys.forEach((id) => {
                                     const exitCode = relValObject[id].exitcode;

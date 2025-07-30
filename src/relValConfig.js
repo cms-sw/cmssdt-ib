@@ -35,13 +35,17 @@ export const RELVAL_STATUS_ENUM = {
 };
 export const urls = {
     exitcodes: "https://cms-sw.github.io/exitcodes.json",
-    RelvalsAvailableResults: "https://cmssdt.cern.ch/SDT/public/cms-sw.github.io/data/RelvalsAvailableResults.json",
-    relValsResult:
-        (arch, date, que, flavor) => `https://cmssdt.cern.ch/SDT/public/cms-sw.github.io/data/relvals/${arch}/${date}/${que}_${flavor}.json`,
-    relValWorkFlowToIdHash:
-        (arch, date, que, flavor) => `https://cmssdt.cern.ch/SDT/public/cms-sw.github.io/data/commands/${arch}/${date}/${que}_${flavor}.json`,
+    RelvalsAvailableResults: "/SDT/public/cms-sw.github.io/data/RelvalsAvailableResults.json",
+    relValsResult: (arch, date, que, flavor, gpu) =>
+        gpu && gpu !== ""
+          ? `/SDT/public/cms-sw.github.io/data/relvals/${arch}/${date}/gpu/${gpu}/${que}_${flavor}.json`
+          : `/SDT/public/cms-sw.github.io/data/relvals/${arch}/${date}/${que}_${flavor}.json`,
+    relValWorkFlowToIdHash: (arch, date, que, flavor, gpu) =>
+        gpu && gpu !== ""
+          ? `/SDT/public/cms-sw.github.io/data/commands/${arch}/${date}/gpu/${gpu}/${que}_${flavor}.json`
+          : `/SDT/public/cms-sw.github.io/data/commands/${arch}/${date}/${que}_${flavor}.json`,
     relValCmd:
-        (digit1, digitsRest) => `https://cmssdt.cern.ch/SDT/public/cms-sw.github.io/data/commands/objs/${digit1}/${digitsRest}`,
+        (digit1, digitsRest) => `/SDT/public/cms-sw.github.io/data/commands/objs/${digit1}/${digitsRest}`,
     relValLog:
     // 'http://cmssdt.cern.ch/SDT/cgi-bin/buildlogs/' + arch + '/' + ib + '/pyRelValMatrixLogs/run/' + workflowID + '_' + workflowName + '/' + filename;
         (arch, ib, workflowID, workflowName, filename) => 'http://cmssdt.cern.ch/SDT/cgi-bin/logreader/' + arch + '/' + ib + '/pyRelValMatrixLogs/run/' + workflowID + '_' + workflowName + '/' + filename

@@ -4,6 +4,7 @@ import uuid from 'uuid';
 import MenuItem from "react-bootstrap/es/MenuItem";
 import {Dropdown, Glyphicon} from "react-bootstrap";
 import {getCurrentIbTag, getDisplayName} from "../../Utils/processing";
+import {GpuRelvalsLabel, GpuQALabel} from './GpuTestLabel';
 
 const {statusLabelsConfigs} = config;
 
@@ -168,10 +169,17 @@ class StatusLabels extends Component {
         if (showOnlyIbTag) {
             return <p>{StatusLabels.renderIBTag(IBGroup, ibGroupType)}</p>
         } else {
-            return (
-                <p>{[StatusLabels.renderIBTag(IBGroup, ibGroupType),
-                    statusLabelsConfigs.map(conf => StatusLabels.renderLabel(conf, ib))]}
-                </p>)
+	    let menu_data = [StatusLabels.renderIBTag(IBGroup, ibGroupType)]
+	    if (ib && ib.gpu_data){
+                if (ib.gpu_data && ib.gpu_data.relvals){
+		    menu_data.push(<GpuRelvalsLabel key="gpu-relvals" gpuTests={ib.gpu_data.relvals} ib={ib} />);
+		}
+		if (ib.gpu_data && ib.gpu_data.qa){
+		    menu_data.push(<GpuQALabel key="gpu-qa" gpuTests={ib.gpu_data.qa} ib={ib} />);
+		}
+	    }
+	    menu_data.push(statusLabelsConfigs.map(conf => StatusLabels.renderLabel(conf, ib)));
+	    return (<p>{menu_data}</p>)
         }
     }
 }

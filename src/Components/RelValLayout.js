@@ -14,6 +14,7 @@ const NAV_CONTROLS_ENUM = {
     SELECTED_ARCHS: "selectedArchs",
     SELECTED_FLAVORS: "selectedFlavors",
     SELECTED_STATUS: "selectedStatus",
+    SELECTED_GPUS: "selectedGPUs",
     SELECTED_FILTER_STATUS: "selectedFilterStatus"
 };
 
@@ -35,13 +36,15 @@ class RelValLayout extends Component {
     doUpdateData() {
         const {date, que} = this.props.match.params;
         const allArchs = RelValStore.getAllArchsForQue({date, que});
+	const allGPUs = RelValStore.getAllGPUsForQue({date, que});
         const allFlavors = RelValStore.getAllFlavorsForQue({date, que});
         const structure = RelValStore.getFlavorStructure({date, que});
-        this.setState({structure, allArchs, allFlavors, date, que});
+        this.setState({structure, allArchs, allGPUs, allFlavors, date, que});
 
         const {location, history} = this.props;
         if (location.search === "") {
             partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_ARCHS, allArchs);
+	    partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_GPUS, allGPUs);
             partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_FLAVORS, allFlavors);
             partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_STATUS, [STATUS_ENUM.FAILED]);
             goToLinkWithoutHistoryUpdate(history, location);
@@ -55,12 +58,14 @@ class RelValLayout extends Component {
         const oldQue = this.props.match.params.que;
         if (date !== oldDate || que !== oldQue) {
             const allArchs = RelValStore.getAllArchsForQue({date, que});
+	    const allGPUs = RelValStore.getAllGPUsForQue({date, que});
             const allFlavors = RelValStore.getAllFlavorsForQue({date, que});
             const structure = RelValStore.getFlavorStructure({date, que});
-            this.setState({structure, allArchs, allFlavors, date, que});
+            this.setState({structure, allArchs, allGPUs, allFlavors, date, que});
 
             const {location, history} = newProps;
             partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_ARCHS, allArchs);
+	    partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_GPUS, allGPUs);
             partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_FLAVORS, allFlavors);
             goToLinkWithoutHistoryUpdate(history, location);
         }
@@ -92,11 +97,17 @@ class RelValLayout extends Component {
     }
 
     render() {
-        const {allArchs = [], allFlavors = []} = this.state;
-        const {selectedArchs, selectedFlavors, selectedStatus, selectedFilterStatus} = queryString.parse(this.props.location.search);
+        const {allArchs = [], allGPUs = [], allFlavors = []} = this.state;
+        let {selectedArchs, selectedGPUs, selectedFlavors, selectedStatus, selectedFilterStatus} = queryString.parse(this.props.location.search);
         const {structure = {}} = this.state;
         const {date, que} = this.props.match.params;
         const {location, history} = this.props;
+	if (!selectedGPUs){selectedGPUs="";}
+	if (typeof selectedGPUs !== 'string') {
+	    selectedGPUs = selectedGPUs.filter(item => item !== "");
+	    if (selectedGPUs.length == 0){selectedGPUs = "";}
+	    else if (selectedGPUs.length == 1){selectedGPUs = selectedGPUs[0];}
+	}
         const controlList = [
             <TogglesShowRow
                 rowName={'Flavors'}
@@ -112,6 +123,14 @@ class RelValLayout extends Component {
                 initSelections={selectedArchs}
                 callbackToParent={(v) => {
                     partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_ARCHS, v);
+                    goToLinkWithoutHistoryUpdate(history, location);
+                }}/>,
+	    <TogglesShowRow
+                rowName={'GPUs'}
+                nameList={allGPUs}
+                initSelections={selectedGPUs}
+                callbackToParent={(v) => {
+                    partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_GPUS, v);
                     goToLinkWithoutHistoryUpdate(history, location);
                 }}/>,
             [
@@ -138,15 +157,17 @@ class RelValLayout extends Component {
         const resultTableWithStepsSettings = {
             style: {height: this.getSizeForTable()},
             allArchs,
+	    allGPUs,
             allFlavors,
             selectedArchs,
+	    selectedGPUs,
             selectedFlavors,
             selectedStatus,
             structure,
             selectedFilterStatus,
             ibDate: date,
             ibQue: que,
-            filteredRelVals: filterRelValStructure({structure, selectedArchs, selectedFlavors, selectedStatus})
+            filteredRelVals: filterRelValStructure({structure, selectedArchs, selectedGPUs, selectedFlavors, selectedStatus})
         };
 
         return (

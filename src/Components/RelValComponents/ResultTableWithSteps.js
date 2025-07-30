@@ -175,7 +175,7 @@ class ResultTableWithSteps extends Component {
 
     render() {
         let tableConfig = [];
-        const {filteredRelVals, selectedArchs, selectedFlavors, style, selectedFilterStatus} = this.props;
+        const {filteredRelVals, selectedArchs, selectedGPUs, selectedFlavors, style, selectedFilterStatus} = this.props;
         const {structure = {}, ibDate, ibQue} = this.props;
         const archColorScheme = ShowArchStore.getColorsSchemeForQue(
             getReleaseQue(ibQue)
@@ -235,9 +235,12 @@ class ResultTableWithSteps extends Component {
                 let archsConfig = structure.flavors[flavorKey];
                 let archKeys = getObjectKeys(archsConfig);
                 filterNameList(archKeys, selectedArchs).forEach(archKey => {
+		  let gpusConfig =  structure.flavors[flavorKey][archKey];
+		  let gpuKeys = getObjectKeys(gpusConfig);
+		  filterNameList(gpuKeys, selectedGPUs).forEach(gpuKey => {
                     configObject.columns.push({
                         Header: () => {
-                            const statistics = structure.relvalStatus[flavorKey][archKey];
+                            const statistics = structure.relvalStatus[flavorKey][archKey][gpuKey];
                             const statuslabels =
                                 <p key={uuid.v4()}>
                                     {this._renderLabel(statistics.passed, LABEL_COLOR.PASSED_COLOR)}
@@ -245,7 +248,9 @@ class ResultTableWithSteps extends Component {
                                     {this._renderLabel(statistics.failed, LABEL_COLOR.FAILED_COLOR)}
                                     {/*{this._renderLabel(statistics.size, "grey")}*/}
                                 </p>;
-
+                            const gpuName = <p key={uuid.v4()}>
+			        <b>{gpuKey}</b>
+				</p>;
                             const archNames = (
                                 archKey.split("_").map(str => {
                                     const color = archColorScheme[str];
@@ -258,14 +263,15 @@ class ResultTableWithSteps extends Component {
                                     )
                                 })
                             );
-                            return [...archNames, statuslabels]
+			    if (gpuKey === ""){return [...archNames, statuslabels];}
+                            return [...archNames, gpuName, statuslabels]
                         },
                         // accessor: "id",
                         // Used for filtering
                         accessor: relVal => {
                             let data;
-                            if (structure.flavors[flavorKey][archKey]) {
-                                data = structure.flavors[flavorKey][archKey][relVal.id];
+                            if (structure.flavors[flavorKey][archKey][gpuKey]) {
+                                data = structure.flavors[flavorKey][archKey][gpuKey][relVal.id];
                             }
                             if (data) {
                                 const {steps, exitcode} = data;
@@ -288,15 +294,15 @@ class ResultTableWithSteps extends Component {
                                 return null
                             }
                         },
-                        id: flavorKey + "-" + archKey,
+                        id: flavorKey + "-" + archKey + "-gpu" + gpuKey,
                         filterable: doFilterColumn,
                         Cell: props => {
                             // const id = props.value;
                             const id = props.original.id;
                             const {isExpanded} = props;
                             let data;
-                            if (structure.flavors[flavorKey][archKey]) {
-                                data = structure.flavors[flavorKey][archKey][id];
+                            if (structure.flavors[flavorKey][archKey][gpuKey]) {
+                                data = structure.flavors[flavorKey][archKey][gpuKey][id];
                             }
                             if (data) {
                                 const ib = getIb(ibDate, ibQue, flavorKey);
@@ -316,7 +322,8 @@ class ResultTableWithSteps extends Component {
                                 }}> --- </div>
                             }
                         },
-                    })
+                    });
+		  });
                 });
                 tableConfig.push(configObject);
             })
