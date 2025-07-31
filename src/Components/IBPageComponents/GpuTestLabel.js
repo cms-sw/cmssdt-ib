@@ -89,18 +89,18 @@ const GpuQALabel = ({ gpuTests }) => {
         <span className="glyphicon" style={{ marginRight: '5px' }}></span>
         <span style={{ color: anyFailure ? '#fff' : '#000' }}>GPU Test</span>
       </Dropdown.Toggle>
-      <Dropdown.Menu>
+      <Dropdown.Menu className="super-colors">
         {
           Object.entries(gpuTests).map(([key, item], idx) => {
             const failed = item.details && Number(item.details.num_fails) || 0;
             const url = getBuildOrUnitUrl({"file": item.file, "arch": item.arch, "ibName": item.release_name, "urlParameter": "?utests/gpu/"+item.gpu});
             return (
-              <MenuItem key={key || idx}>
+              <MenuItem key={uuid.v4()} href={url}>
                 <span className="badge badge-default" style={{ marginRight: '5px' }}>{key}</span>
                 {failed === 0 ? (
-                   <a className="btn label label-success" href={url}><span className="glyphicon glyphicon-ok-circle"></span></a>
+                    <span className="btn label label-success"><span className="glyphicon glyphicon-ok-circle"></span></span>
                    ) : (
-                   <a className="btn label label-danger" href={url}>{failed}</a>
+                   <span className="btn label label-danger">{failed}</span>
                 )}
               </MenuItem>
             );
