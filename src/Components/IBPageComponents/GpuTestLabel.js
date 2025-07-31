@@ -3,10 +3,7 @@ import PropTypes from 'prop-types';
 import uuid from 'uuid';
 import {Dropdown, MenuItem, Glyphicon} from "react-bootstrap";
 import { config, showLabelConfig } from '../../config';
-import getBuildOrUnitUrl from "./ComparisonTable";
 const {urls} = config;
-
-//import { renderIBTag } from './StatusLabels';
 
 const xrenderIBTag = (label, isRed) => {
 return	(
@@ -26,7 +23,23 @@ const renderIBTag = (label, isRed) => (
   </span>
 );
 
-const GpuRelvalsLabel = ({ gpuTests , ib}) => {
+const getBuildOrUnitUrl = function (params) {
+    const {file, arch, ibName} = params;
+    const urlParameter = params.urlParameter ? params.urlParameter : '';
+    if (!file) {
+        // do nothing
+    } else if (file === 'not-ready') {
+        return urls.scramDetailUrl + arch + ";" + ibName
+    } else {
+        let link_parts = file.split('/');
+        const si = 4;
+        link_parts = link_parts.slice(si, si + 5);
+        return urls.buildOrUnitTestUrl + link_parts.join('/') + urlParameter;
+    }
+};
+
+
+const GpuRelvalsLabel = ({ gpuTests }) => {
   if (!gpuTests || Object.keys(gpuTests).length === 0) return null;
   const anyFailure = Object.values(gpuTests).some(t => t.details && t.details.num_failed > 0);
   return ([
@@ -67,7 +80,7 @@ const GpuRelvalsLabel = ({ gpuTests , ib}) => {
   );
 };
 
-const GpuQALabel = ({ gpuTests , ib}) => {
+const GpuQALabel = ({ gpuTests }) => {
   if (!gpuTests || Object.keys(gpuTests).length === 0) return null;
   const anyFailure = Object.values(gpuTests).some(t => t.details && Number(t.details.num_fails) > 0);
   return ([
@@ -80,8 +93,7 @@ const GpuQALabel = ({ gpuTests , ib}) => {
         {
           Object.entries(gpuTests).map(([key, item], idx) => {
             const failed = item.details && Number(item.details.num_fails) || 0;
-            //getUrl({"file": details.file, "arch": details.arch, "ibName": ibName, "urlParameter": urlParameter})
-            const url = `/report/${key}`; // Replace with real URL logic
+            const url = getBuildOrUnitUrl({"file": item.file, "arch": item.arch, "ibName": item.release_name, "urlParameter": "?utests/gpu/"+item.gpu});
             return (
               <MenuItem key={key || idx}>
                 <span className="badge badge-default" style={{ marginRight: '5px' }}>{key}</span>

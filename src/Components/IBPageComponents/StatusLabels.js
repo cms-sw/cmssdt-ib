@@ -172,10 +172,10 @@ class StatusLabels extends Component {
 	    let menu_data = [StatusLabels.renderIBTag(IBGroup, ibGroupType)]
 	    if (ib && ib.gpu_data){
                 if (ib.gpu_data && ib.gpu_data.relvals){
-		    menu_data.push(<GpuRelvalsLabel key="gpu-relvals" gpuTests={ib.gpu_data.relvals} ib={ib} />);
+		    menu_data.push(<GpuRelvalsLabel key="gpu-relvals" gpuTests={ib.gpu_data.relvals} />);
 		}
 		if (ib.gpu_data && ib.gpu_data.qa){
-		    menu_data.push(<GpuQALabel key="gpu-qa" gpuTests={ib.gpu_data.qa} ib={ib} />);
+		    menu_data.push(<GpuQALabel key="gpu-qa" gpuTests={ib.gpu_data.qa} />);
 		}
 	    }
 	    menu_data.push(statusLabelsConfigs.map(conf => StatusLabels.renderLabel(conf, ib)));
