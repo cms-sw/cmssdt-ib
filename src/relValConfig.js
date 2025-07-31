@@ -47,9 +47,10 @@ export const urls = {
     relValCmd:
         (digit1, digitsRest) => `/SDT/public/cms-sw.github.io/data/commands/objs/${digit1}/${digitsRest}`,
     relValLog:
-    // 'http://cmssdt.cern.ch/SDT/cgi-bin/buildlogs/' + arch + '/' + ib + '/pyRelValMatrixLogs/run/' + workflowID + '_' + workflowName + '/' + filename;
-        (arch, ib, workflowID, workflowName, filename) => 'http://cmssdt.cern.ch/SDT/cgi-bin/logreader/' + arch + '/' + ib + '/pyRelValMatrixLogs/run/' + workflowID + '_' + workflowName + '/' + filename
-
+        (arch, ib, workflowID, workflowName, filename, gpu) =>
+          gpu && gpu !== ""
+            ? `/SDT/cgi-bin/logreader/${arch}/${ib}/gpu/${gpu}/pyRelValMatrixLogs/run/${workflowID}_${workflowName}/${filename}`
+            : `/SDT/cgi-bin/logreader/${arch}/${ib}/pyRelValMatrixLogs/run/${workflowID}_${workflowName}/${filename}`
 };
 const _legendConf = [
     {color: LABEL_COLOR.PASSED_COLOR, code: LABELS_TEXT.PASSED, text: 'Passed without error or warning messages'},

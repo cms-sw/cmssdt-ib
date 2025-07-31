@@ -23,7 +23,7 @@ const {urls} = config;
 /**
  * returns the link address for a given Ib and an arch
  */
-function getLogAddress(arch, ib, step, workflowName, workflowID, wasDASErr) {
+function getLogAddress(arch, ib, step, workflowName, workflowID, wasDASErr, gpuKey) {
     // TODO fix relvals
     let filename = '';
     if (!wasDASErr) {
@@ -31,7 +31,7 @@ function getLogAddress(arch, ib, step, workflowName, workflowID, wasDASErr) {
     } else {
         filename = 'step1_dasquery.log';
     }
-    return urls.relValLog(arch, ib, workflowID, workflowName, filename)
+    return urls.relValLog(arch, ib, workflowID, workflowName, filename, gpuKey)
 }
 
 function getLabelName(name) {
@@ -115,7 +115,7 @@ class ResultTableWithSteps extends Component {
         )
     }
 
-    _renderSteps({isExpanded, ib, archKey, data}) {
+    _renderSteps({isExpanded, ib, archKey, data, gpuKey}) {
         /**
          * Return rendered content for the cell
          */
@@ -135,20 +135,20 @@ class ResultTableWithSteps extends Component {
                 } else {
                     labelColor = LABEL_COLOR.PASSED_COLOR
                 }
-                logUrl = getLogAddress(archKey, ib, i, name, id, false);
+                logUrl = getLogAddress(archKey, ib, i, name, id, false, gpuKey);
                 label = this._rowWithLabel(getLabelName(step.status), i, logUrl, steps, labelColor, name, glyphicon)
             } else if (status === RELVAL_STATUS_ENUM.FAILED) {
                 let labelColor = isRelValKnownFailed(data) ? LABEL_COLOR.PASSED_COLOR : LABEL_COLOR.FAILED_COLOR;
-                logUrl = getLogAddress(archKey, ib, i, name, id, false);
+                logUrl = getLogAddress(archKey, ib, i, name, id, false, gpuKey);
                 label = this._rowWithLabel(ExitCodeStore.getExitCodeName(exitcode), i, logUrl, steps, labelColor, name, glyphicon)
             } else if (status === RELVAL_STATUS_ENUM.DAS_ERROR) {
-                logUrl = getLogAddress(archKey, ib, i, name, id, true);
+                logUrl = getLogAddress(archKey, ib, i, name, id, true, gpuKey);
                 label = this._rowWithLabel(getLabelName(step.status), i, logUrl, steps, LABEL_COLOR.DAS_ERROR_COLOR, name, glyphicon)
             } else if (status === RELVAL_STATUS_ENUM.NOTRUN) {
-                logUrl = getLogAddress(archKey, ib, i, name, id, false);
+                logUrl = getLogAddress(archKey, ib, i, name, id, false, gpuKey);
                 label = this._rowWithLabel(getLabelName(step.status), i, logUrl, steps, LABEL_COLOR.NOT_RUN_COLOR, name, glyphicon)
             } else if (status === RELVAL_STATUS_ENUM.TIMEOUT) {
-                logUrl = getLogAddress(archKey, ib, i, name, id, false);
+                logUrl = getLogAddress(archKey, ib, i, name, id, false, gpuKey);
                 label = this._rowWithLabel(getLabelName(step.status), i, logUrl, steps, LABEL_COLOR.FAILED_COLOR, name, glyphicon)
             } else {
                 console.error('Unknown status')
@@ -306,7 +306,7 @@ class ResultTableWithSteps extends Component {
                             }
                             if (data) {
                                 const ib = getIb(ibDate, ibQue, flavorKey);
-                                let renderedStepList = this._renderSteps({isExpanded, ib, archKey, data});
+                                let renderedStepList = this._renderSteps({isExpanded, ib, archKey, data, gpuKey});
                                 return <div style={{
                                     width: `${props.value}%`,
                                     height: '100%',
