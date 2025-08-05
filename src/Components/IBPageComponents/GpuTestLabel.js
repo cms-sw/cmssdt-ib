@@ -68,18 +68,12 @@ const GpuRelvalsLabel = ({ gpuTests }) => {
             const url = urls.newRelValsSpecific(match[1], match[4], match[2], item.arch, "&selectedGPUs=" + item.gpu + "&selectedStatus=" + state);
 	    return (
                 <MenuItem key={uuid.v4()} href={url}>
-                  <table style={{ width: '100%' }}>
-                    <tbody>
-                      <tr>
-                        <td style={{ textAlign: 'left', paddingRight: '10px', whiteSpace: 'nowrap' }}>
-                          <b>{key}</b>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-		           <span className={label_type}>{num}{done}</span>
-		        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                   <div><b>{key}</b></div>
+                   <div style={{ marginLeft: '5px' }}>
+		     <span className={label_type}>{num}{done}</span>
+		   </div>
+                  </div>
                 </MenuItem>
             );
         })}
@@ -106,24 +100,16 @@ const GpuQALabel = ({ gpuTests }) => {
             const url = getBuildOrUnitUrl({"file": item.file, "arch": item.arch, "ibName": item.release_name, "urlParameter": "?utests/gpu/"+item.gpu});
             return (
                 <MenuItem key={uuid.v4()} href={url}>
-                  <table style={{ width: '100%' }}>
-                    <tbody>
-                      <tr>
-                        <td style={{ textAlign: 'left', paddingRight: '10px', whiteSpace: 'nowrap' }}>
-                          <b>{key}</b>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          {failed === 0 ? (
-                             <span className="label label-success">
-                               <span className="glyphicon glyphicon-ok-circle"></span>
-                             </span>
-                          ) : (
-                            <span className="label label-danger">{failed}</span>
-                          )}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                   <div><b>{key}</b></div>
+		   <div style={{ marginLeft: '5px' }}>
+                     {failed === 0 ? (
+                       <span className="label label-success"><span className="glyphicon glyphicon-ok-circle"></span></span>
+                     ) : (
+                       <span className="label label-danger">{failed}</span>
+                     )}
+		    </div>
+                  </div>
                 </MenuItem>
             );
         })}
