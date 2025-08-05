@@ -67,10 +67,20 @@ const GpuRelvalsLabel = ({ gpuTests }) => {
             const match = item.release_name.match(/^(CMSSW_\d+_\d+)_((.+_|)X)_(.*)$/);
             const url = urls.newRelValsSpecific(match[1], match[4], match[2], item.arch, "&selectedGPUs=" + item.gpu + "&selectedStatus=" + state);
 	    return (
-              <MenuItem key={uuid.v4()} href={url}>
-                <span className="badge badge-default" style={{ marginRight: '5px' }}>{key}</span>
-                <span className={label_type}>{num}{done}</span>
-              </MenuItem>
+                <MenuItem key={uuid.v4()} href={url}>
+                  <table style={{ width: '100%' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ textAlign: 'left', paddingRight: '10px', whiteSpace: 'nowrap' }}>
+                          <b>{key}</b>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+		           <span className={label_type}>{num}{done}</span>
+		        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </MenuItem>
             );
         })}
       </Dropdown.Menu>
@@ -95,14 +105,26 @@ const GpuQALabel = ({ gpuTests }) => {
             const failed = item.details && Number(item.details.num_fails) || 0;
             const url = getBuildOrUnitUrl({"file": item.file, "arch": item.arch, "ibName": item.release_name, "urlParameter": "?utests/gpu/"+item.gpu});
             return (
-              <MenuItem key={uuid.v4()} href={url}>
-                <span className="badge badge-default" style={{ marginRight: '5px' }}>{key}</span>
-                {failed === 0 ? (
-                    <span className="btn label label-success"><span className="glyphicon glyphicon-ok-circle"></span></span>
-                   ) : (
-                   <span className="btn label label-danger">{failed}</span>
-                )}
-              </MenuItem>
+                <MenuItem key={uuid.v4()} href={url}>
+                  <table style={{ width: '100%' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ textAlign: 'left', paddingRight: '10px', whiteSpace: 'nowrap' }}>
+                          <b>{key}</b>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          {failed === 0 ? (
+                             <span className="label label-success">
+                               <span className="glyphicon glyphicon-ok-circle"></span>
+                             </span>
+                          ) : (
+                            <span className="label label-danger">{failed}</span>
+                          )}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </MenuItem>
             );
         })}
       </Dropdown.Menu>
