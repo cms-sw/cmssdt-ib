@@ -1,5 +1,6 @@
 import * as axios from "axios";
 import wrapper from 'axios-cache-plugin';
+import limit from 'p-limit';
 
 let httpWrapper = wrapper(axios, {
     maxCacheSize: 50,
@@ -16,13 +17,17 @@ export function getSingleFile({fileUrl, onSuccessCallback}) {
 }
 
 export function getMultipleFiles({fileUrlList, onSuccessCallback}) {
-    let callbacks = fileUrlList.map(fileUrl => {
-        return httpWrapper.get(fileUrl);
-    });
-    // when all callbacks are done, do something
-    axios.all(callbacks)
+    const concurrencyLimit = 3; // max 3 requests at a time
+    const limiter = limit(concurrencyLimit);
+
+    const limitedRequests = fileUrlList.map(url =>
+        limiter(() => httpWrapper.get(url))
+    );
+
+    Promise.all(limitedRequests)
         .then(onSuccessCallback)
-        .catch(function (error) {
-            console.error(error);
+        .catch(error => {
+            console.error('Error fetching files:', error);
         });
 }
+
