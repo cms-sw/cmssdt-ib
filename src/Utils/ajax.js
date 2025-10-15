@@ -27,7 +27,7 @@ function sleep(ms) {
 
 export function getMultipleFiles({ fileUrlList, onSuccessCallback = () => {} }) {
     fileUrlList = Array.isArray(fileUrlList) ? fileUrlList : [];
-    const concurrencyLimit = 3;
+    const concurrencyLimit = 1;
     const delayMs = 100;
     let index = 0;
     let active = 0;
