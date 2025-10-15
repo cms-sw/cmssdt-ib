@@ -7,6 +7,11 @@ let httpWrapper = wrapper(axios, {
 });
 httpWrapper.__addFilter(/\.json/);
 
+// Helper to add a delay
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export function getSingleFile({fileUrl, onSuccessCallback}) {
     axios.get(fileUrl)
         .then(onSuccessCallback)
@@ -15,30 +20,43 @@ export function getSingleFile({fileUrl, onSuccessCallback}) {
         });
 }
 
-export function getMultipleFiles({ fileUrlList, onSuccessCallback }) {
-    const concurrencyLimit = 3; // Max 3 requests
+// Helper to add a delay
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export function getMultipleFiles({ fileUrlList, onSuccessCallback = () => {} }) {
+    fileUrlList = Array.isArray(fileUrlList) ? fileUrlList : [];
+    const concurrencyLimit = 3;
+    const delayMs = 100;
     let index = 0;
     let active = 0;
     const results = [];
 
     function next() {
         if (index >= fileUrlList.length && active === 0) {
-            onSuccessCallback(results);
+            onSuccessCallback(results); // safe now
             return;
         }
 
         while (active < concurrencyLimit && index < fileUrlList.length) {
             const currentIndex = index++;
             active++;
-
-            httpWrapper.get(fileUrlList[currentIndex])
-                .then(res => { results[currentIndex] = res; })
-                .catch(err => { console.error(err); results[currentIndex] = null; })
-                .finally(() => {
-                    active--;
-                    next();
-                });
+            console.log('Starting:', currentIndex, active, fileUrlList[currentIndex]);
+            sleep(delayMs).then(() =>
+                httpWrapper.get(fileUrlList[currentIndex])
+                    .then(res => { results[currentIndex] = res; })
+                    .catch(err => {
+                        console.error(err);
+                        results[currentIndex] = null;
+                    })
+                    .finally(() => {
+                        active--;
+                        next();
+                    })
+            );
         }
     }
+
     next();
 }
