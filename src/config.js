@@ -339,7 +339,7 @@ export const config = {
             name: "RECO event loop",
             key: "reco_event_loop",
             getUrl: function (ib, result) {
-                return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/igprof/"
+                return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/profiling/"
                     + getCurrentIbTag(ib) + "/" + result.data;
             }
         },
