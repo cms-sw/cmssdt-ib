@@ -179,7 +179,10 @@ export function getStructureFromAvalableRelVals(relvalInfoObject) {
 	    let gpu = "";
             config[date][que].flavors[flavor][arch][""] = {date, que, flavor, arch, gpu}
 	    uarchs.push(arch);
-            parts.filter(p => p.startsWith("gpu_")).forEach(gpu => {
+            parts
+              .filter(p => p.startsWith("gpu_"))
+              .map(p => p.slice(4))
+              .forEach(gpu => {
                 config[date][que].flavors[flavor][arch][gpu] = {date, que, flavor, arch, gpu};
 		ugpus.push(gpu)
             // TODO sort config[date][que].flavors[flavor] somehow, for now it is sorted at 2 places
