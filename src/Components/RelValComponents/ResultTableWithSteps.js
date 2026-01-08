@@ -23,7 +23,7 @@ const {urls} = config;
 /**
  * returns the link address for a given Ib and an arch
  */
-function getLogAddress(arch, ib, step, workflowName, workflowID, wasDASErr, gpuKey) {
+function getLogAddress(arch, ib, step, workflowName, workflowID, wasDASErr, typeKey, nameKey) {
     // TODO fix relvals
     let filename = '';
     if (!wasDASErr) {
@@ -31,7 +31,7 @@ function getLogAddress(arch, ib, step, workflowName, workflowID, wasDASErr, gpuK
     } else {
         filename = 'step1_dasquery.log';
     }
-    return urls.relValLog(arch, ib, workflowID, workflowName, filename, gpuKey)
+    return urls.relValLog(arch, ib, workflowID, workflowName, filename, typeKey, nameKey)
 }
 
 function getLabelName(name) {
@@ -115,7 +115,7 @@ class ResultTableWithSteps extends Component {
         )
     }
 
-    _renderSteps({isExpanded, ib, archKey, data, gpuKey}) {
+    _renderSteps({isExpanded, ib, archKey, data, typeKey, nameKey}) {
         /**
          * Return rendered content for the cell
          */
@@ -135,20 +135,20 @@ class ResultTableWithSteps extends Component {
                 } else {
                     labelColor = LABEL_COLOR.PASSED_COLOR
                 }
-                logUrl = getLogAddress(archKey, ib, i, name, id, false, gpuKey);
+                logUrl = getLogAddress(archKey, ib, i, name, id, false, typeKey, nameKey);
                 label = this._rowWithLabel(getLabelName(step.status), i, logUrl, steps, labelColor, name, glyphicon)
             } else if (status === RELVAL_STATUS_ENUM.FAILED) {
                 let labelColor = isRelValKnownFailed(data) ? LABEL_COLOR.PASSED_COLOR : LABEL_COLOR.FAILED_COLOR;
-                logUrl = getLogAddress(archKey, ib, i, name, id, false, gpuKey);
+                logUrl = getLogAddress(archKey, ib, i, name, id, false, typeKey, nameKey);
                 label = this._rowWithLabel(ExitCodeStore.getExitCodeName(exitcode), i, logUrl, steps, labelColor, name, glyphicon)
             } else if (status === RELVAL_STATUS_ENUM.DAS_ERROR) {
-                logUrl = getLogAddress(archKey, ib, i, name, id, true, gpuKey);
+                logUrl = getLogAddress(archKey, ib, i, name, id, true, typeKey, nameKey);
                 label = this._rowWithLabel(getLabelName(step.status), i, logUrl, steps, LABEL_COLOR.DAS_ERROR_COLOR, name, glyphicon)
             } else if (status === RELVAL_STATUS_ENUM.NOTRUN) {
-                logUrl = getLogAddress(archKey, ib, i, name, id, false, gpuKey);
+                logUrl = getLogAddress(archKey, ib, i, name, id, false, typeKey, nameKey);
                 label = this._rowWithLabel(getLabelName(step.status), i, logUrl, steps, LABEL_COLOR.NOT_RUN_COLOR, name, glyphicon)
             } else if (status === RELVAL_STATUS_ENUM.TIMEOUT) {
-                logUrl = getLogAddress(archKey, ib, i, name, id, false, gpuKey);
+                logUrl = getLogAddress(archKey, ib, i, name, id, false, typeKey, nameKey);
                 label = this._rowWithLabel(getLabelName(step.status), i, logUrl, steps, LABEL_COLOR.FAILED_COLOR, name, glyphicon)
             } else {
                 console.error('Unknown status')
@@ -175,7 +175,7 @@ class ResultTableWithSteps extends Component {
 
     render() {
         let tableConfig = [];
-        const {filteredRelVals, selectedArchs, selectedGPUs, selectedFlavors, style, selectedFilterStatus} = this.props;
+        const {filteredRelVals, selectedArchs, selectedGPUs, selectedOthers, selectedFlavors, style, selectedFilterStatus} = this.props;
         const {structure = {}, ibDate, ibQue} = this.props;
         const archColorScheme = ShowArchStore.getColorsSchemeForQue(
             getReleaseQue(ibQue)
@@ -232,98 +232,99 @@ class ResultTableWithSteps extends Component {
                     Header: () => <div>{getDisplayName(flavorKey)}</div>,
                     columns: []
                 };
-                let archsConfig = structure.flavors[flavorKey];
-                let archKeys = getObjectKeys(archsConfig);
+                let archKeys = getObjectKeys(structure.flavors[flavorKey]);
                 filterNameList(archKeys, selectedArchs).forEach(archKey => {
-		  let gpusConfig =  structure.flavors[flavorKey][archKey];
-		  let gpuKeys = getObjectKeys(gpusConfig);
-		  filterNameList(gpuKeys, selectedGPUs).forEach(gpuKey => {
-                    configObject.columns.push({
-                        Header: () => {
-                            const statistics = structure.relvalStatus[flavorKey][archKey][gpuKey];
-                            const statuslabels =
-                                <p key={uuid.v4()}>
-                                    {this._renderLabel(statistics.passed, LABEL_COLOR.PASSED_COLOR)}
-                                    {this._renderLabel(statistics.known_failed, LABEL_COLOR.PASSED_ERRORS_COLOR)}
-                                    {this._renderLabel(statistics.failed, LABEL_COLOR.FAILED_COLOR)}
-                                    {/*{this._renderLabel(statistics.size, "grey")}*/}
-                                </p>;
-                            const gpuName = <p key={uuid.v4()}>
-			        <b>{gpuKey}</b>
-				</p>;
-                            const archNames = (
-                                archKey.split("_").map(str => {
-                                    const color = archColorScheme[str];
-
-                                    return (
-                                        <div style={{backgroundColor: color, paddingLeft: 6.3}}
-                                             key={uuid.v4()}>
-                                            <span style={{color: "white"}}>{" " + str}</span>
-                                        </div>
-                                    )
-                                })
-                            );
-			    if (gpuKey === ""){return [...archNames, statuslabels];}
-                            return [...archNames, gpuName, statuslabels]
-                        },
-                        // accessor: "id",
-                        // Used for filtering
-                        accessor: relVal => {
-                            let data;
-                            if (structure.flavors[flavorKey][archKey][gpuKey]) {
-                                data = structure.flavors[flavorKey][archKey][gpuKey][relVal.id];
-                            }
-                            if (data) {
-                                const {steps, exitcode} = data;
-                                const last_step = steps[steps.length - 1];
-                                const {status} = last_step;
-                                if (status === RELVAL_STATUS_ENUM.PASSED) {
-                                    return getLabelName(status);
-                                } else if (status === RELVAL_STATUS_ENUM.FAILED) {
-                                    return ExitCodeStore.getExitCodeName(exitcode);
-                                } else if (status === RELVAL_STATUS_ENUM.DAS_ERROR) {
-                                    return getLabelName(status);
-                                } else if (status === RELVAL_STATUS_ENUM.NOTRUN) {
-                                    return getLabelName(status);
-                                } else if (status === RELVAL_STATUS_ENUM.TIMEOUT) {
-                                    return getLabelName(status);
-                                } else {
-                                    return null
-                                }
-                            } else {
-                                return null
-                            }
-                        },
-                        id: flavorKey + "-" + archKey + "-gpu" + gpuKey,
-                        filterable: doFilterColumn,
-                        Cell: props => {
-                            // const id = props.value;
-                            const id = props.original.id;
-                            const {isExpanded} = props;
-                            let data;
-                            if (structure.flavors[flavorKey][archKey][gpuKey]) {
-                                data = structure.flavors[flavorKey][archKey][gpuKey][id];
-                            }
-                            if (data) {
-                                const ib = getIb(ibDate, ibQue, flavorKey);
-                                let renderedStepList = this._renderSteps({isExpanded, ib, archKey, data, gpuKey});
-                                return <div style={{
-                                    width: `${props.value}%`,
-                                    height: '100%',
-                                    padding: '2px 20px',
-                                }}>{renderedStepList}</div>;
-                            } else {
-                                // Render empty div
-                                return <div style={{
-                                    // width: `${props.value}%`,
-                                    // height: '100%',
-                                    textAlign: 'center',
-                                    // margin: 'auto',
-                                }}> --- </div>
-                            }
-                        },
-                    });
-		  });
+                    Object.keys(structure.flavors[flavorKey][archKey]).forEach(typeKey => {
+                        let typeKeys = getObjectKeys(structure.flavors[flavorKey][archKey][typeKey]);
+                        let selectedKeys = [""]
+                        if (typeKey === "gpu") { selectedKeys = filterNameList(typeKeys, selectedGPUs);}
+                        if (typeKey === "other") { selectedKeys = filterNameList(typeKeys, selectedOthers);}
+                        selectedKeys.forEach(nameKey => {
+                            configObject.columns.push({
+                                Header: () => {
+                                    const statistics = structure.relvalStatus[flavorKey][archKey][typeKey][nameKey];
+                                    const statuslabels =
+                                        <p key={uuid.v4()}>
+                                            {this._renderLabel(statistics.passed, LABEL_COLOR.PASSED_COLOR)}
+                                            {this._renderLabel(statistics.known_failed, LABEL_COLOR.PASSED_ERRORS_COLOR)}
+                                            {this._renderLabel(statistics.failed, LABEL_COLOR.FAILED_COLOR)}
+                                            {/*{this._renderLabel(statistics.size, "grey")}*/}
+                                        </p>;
+                                    const typeName = <p key={uuid.v4()}><b>{nameKey}</b></p>;
+                                    const archNames = (
+                                        archKey.split("_").map(str => {
+                                            const color = archColorScheme[str];
+                                            return (
+                                                <div style={{backgroundColor: color, paddingLeft: 6.3}}
+                                                     key={uuid.v4()}>
+                                                    <span style={{color: "white"}}>{" " + str}</span>
+                                                </div>
+                                            )
+                                        })
+                                    );
+                                    if (typeKey === ""){return [...archNames, statuslabels];}
+                                    return [...archNames, typeName, statuslabels]
+                                },
+                                // accessor: "id",
+                                // Used for filtering
+                                accessor: relVal => {
+                                    let data;
+                                    if (structure.flavors[flavorKey][archKey][typeKey][nameKey]) {
+                                        console.log('RELVAL:', relVal.id, flavorKey, archKey, typeKey, nameKey, structure.flavors[flavorKey][archKey][typeKey][nameKey]);
+                                        data = structure.flavors[flavorKey][archKey][typeKey][nameKey][relVal.id];
+                                    }
+                                    if (data) {
+                                        const {steps, exitcode} = data;
+                                        const last_step = steps[steps.length - 1];
+                                        const {status} = last_step;
+                                        if (status === RELVAL_STATUS_ENUM.PASSED) {
+                                            return getLabelName(status);
+                                        } else if (status === RELVAL_STATUS_ENUM.FAILED) {
+                                            return ExitCodeStore.getExitCodeName(exitcode);
+                                        } else if (status === RELVAL_STATUS_ENUM.DAS_ERROR) {
+                                            return getLabelName(status);
+                                        } else if (status === RELVAL_STATUS_ENUM.NOTRUN) {
+                                            return getLabelName(status);
+                                        } else if (status === RELVAL_STATUS_ENUM.TIMEOUT) {
+                                            return getLabelName(status);
+                                        } else {
+                                            return null;
+                                        }
+                                    } else {
+                                        return null;
+                                    }
+                                },
+                                id: flavorKey + "-" + archKey + "-" + typeKey + "-" + nameKey,
+                                filterable: doFilterColumn,
+                                Cell: props => {
+                                    // const id = props.value;
+                                    const id = props.original.id;
+                                    const {isExpanded} = props;
+                                    let data;
+                                    if (structure.flavors[flavorKey][archKey][typeKey][nameKey]) {
+                                        data = structure.flavors[flavorKey][archKey][typeKey][nameKey][id];
+                                    }
+                                    if (data) {
+                                        const ib = getIb(ibDate, ibQue, flavorKey);
+                                        let renderedStepList = this._renderSteps({isExpanded, ib, archKey, data, typeKey, nameKey});
+                                        return <div style={{
+                                            width: `${props.value}%`,
+                                            height: '100%',
+                                            padding: '2px 20px',
+                                        }}>{renderedStepList}</div>;
+                                    } else {
+                                        // Render empty div
+                                        return <div style={{
+                                            // width: `${props.value}%`,
+                                            // height: '100%',
+                                            textAlign: 'center',
+                                            // margin: 'auto',
+                                        }}> --- </div>
+                                    }
+                                },
+                            });
+                        });
+		                });
                 });
                 tableConfig.push(configObject);
             })

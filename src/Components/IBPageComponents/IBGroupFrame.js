@@ -4,11 +4,6 @@ import StatusLabels from "./StatusLabels";
 import ComparisonTable from "./ComparisonTable";
 import {Panel} from "react-bootstrap";
 import {checkIfCommitsAreEmpty, checkIfTableIsEmpty} from "../../Utils/processing";
-import CMSDistCommits from "./CMSDistCommits";
-import Grid from "react-bootstrap/es/Grid";
-import Row from "react-bootstrap/es/Row";
-import Col from "react-bootstrap/es/Col";
-
 
 /**
  * ib_date - field grouped by

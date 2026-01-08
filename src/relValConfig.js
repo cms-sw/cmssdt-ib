@@ -33,24 +33,25 @@ export const RELVAL_STATUS_ENUM = {
     TIMEOUT: 'TIMEOUT',
     NOTRUN: 'NOTRUN'
 };
+const cmssdt_server = process.env.REACT_APP_CMSSDT_SERVER || "";
 export const urls = {
     exitcodes: "https://cms-sw.github.io/exitcodes.json",
     RelvalsAvailableResults: "/SDT/public/cms-sw.github.io/data/RelvalsAvailableResults.json",
-    relValsResult: (arch, date, que, flavor, gpu) =>
-        gpu && gpu !== ""
-          ? `/SDT/public/cms-sw.github.io/data/relvals/${arch}/${date}/gpu/${gpu}/${que}_${flavor}.json`
+    relValsResult: (arch, date, que, flavor, type, name) =>
+        type && type !== ""
+          ? `/SDT/public/cms-sw.github.io/data/relvals/${arch}/${date}/${type}/${name}/${que}_${flavor}.json`
           : `/SDT/public/cms-sw.github.io/data/relvals/${arch}/${date}/${que}_${flavor}.json`,
-    relValWorkFlowToIdHash: (arch, date, que, flavor, gpu) =>
-        gpu && gpu !== ""
-          ? `/SDT/public/cms-sw.github.io/data/commands/${arch}/${date}/gpu/${gpu}/${que}_${flavor}.json`
+    relValWorkFlowToIdHash: (arch, date, que, flavor, type, name) =>
+        type && type !== ""
+          ? `/SDT/public/cms-sw.github.io/data/commands/${arch}/${date}/${type}/${name}/${que}_${flavor}.json`
           : `/SDT/public/cms-sw.github.io/data/commands/${arch}/${date}/${que}_${flavor}.json`,
     relValCmd:
         (digit1, digitsRest) => `/SDT/public/cms-sw.github.io/data/commands/objs/${digit1}/${digitsRest}`,
     relValLog:
-        (arch, ib, workflowID, workflowName, filename, gpu) =>
-          gpu && gpu !== ""
-            ? `/SDT/cgi-bin/logreader/${arch}/${ib}/gpu/${gpu}/pyRelValMatrixLogs/run/${workflowID}_${workflowName}/${filename}`
-            : `/SDT/cgi-bin/logreader/${arch}/${ib}/pyRelValMatrixLogs/run/${workflowID}_${workflowName}/${filename}`
+        (arch, ib, workflowID, workflowName, filename, type, name) =>
+          type && type !== ""
+            ? `${cmssdt_server}/SDT/cgi-bin/logreader/${arch}/${ib}/${type}/${name}/pyRelValMatrixLogs/run/${workflowID}_${workflowName}/${filename}`
+            : `${cmssdt_server}/SDT/cgi-bin/logreader/${arch}/${ib}/pyRelValMatrixLogs/run/${workflowID}_${workflowName}/${filename}`
 };
 const _legendConf = [
     {color: LABEL_COLOR.PASSED_COLOR, code: LABELS_TEXT.PASSED, text: 'Passed without error or warning messages'},

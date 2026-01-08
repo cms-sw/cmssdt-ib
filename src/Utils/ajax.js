@@ -7,11 +7,6 @@ let httpWrapper = wrapper(axios, {
 });
 httpWrapper.__addFilter(/\.json/);
 
-// Helper to add a delay
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 export function getSingleFile({fileUrl, onSuccessCallback}) {
     axios.get(fileUrl)
         .then(onSuccessCallback)
@@ -21,7 +16,7 @@ export function getSingleFile({fileUrl, onSuccessCallback}) {
 }
 
 // Helper to add a delay
-function sleep(ms) {
+function sleepMS(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
@@ -33,30 +28,33 @@ export function getMultipleFiles({ fileUrlList, onSuccessCallback = () => {} }) 
     let active = 0;
     const results = [];
 
-    function next() {
+    async function next() {
         if (index >= fileUrlList.length && active === 0) {
-            onSuccessCallback(results); // safe now
+            console.log('Done:', results);
+            onSuccessCallback(results);
             return;
         }
 
+        // Launch as many as concurrency allows
         while (active < concurrencyLimit && index < fileUrlList.length) {
             const currentIndex = index++;
             active++;
             console.log('Starting:', currentIndex, active, fileUrlList[currentIndex]);
-            sleep(delayMs).then(() =>
-                httpWrapper.get(fileUrlList[currentIndex])
-                    .then(res => { results[currentIndex] = res; })
-                    .catch(err => {
-                        console.error(err);
-                        results[currentIndex] = null;
-                    })
-                    .finally(() => {
-                        active--;
-                        next();
-                    })
-            );
+
+            // Start the request after a delay to rate limit
+            (async (i) => {
+                await sleepMS(delayMs); // rate limit
+                try {
+                    results[i] = await httpWrapper.get(fileUrlList[i]);
+                } catch (err) {
+                    console.error(err);
+                    results[i] = null;
+                } finally {
+                    active--;
+                    next(); // continue scheduling next items
+                }
+            })(currentIndex);
         }
     }
-
     next();
 }

@@ -76,18 +76,6 @@ const getRelValUrl = function (params) {
     }
 };
 
-const getFWliteUrl = function (params) {
-    const {file} = params;
-    if (file === 'not-ready') {
-        // return nothing
-    } else {
-        const si = 4;
-        let link_parts = file.split('/');
-        link_parts = link_parts.slice(si, si + 5);
-        return urls.fwliteUrl + link_parts.join('/');
-    }
-};
-
 const getOtherTestUrl = function (params) {
     const {file} = params;
     const si = 4;

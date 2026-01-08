@@ -15,6 +15,7 @@ const NAV_CONTROLS_ENUM = {
     SELECTED_FLAVORS: "selectedFlavors",
     SELECTED_STATUS: "selectedStatus",
     SELECTED_GPUS: "selectedGPUs",
+    SELECTED_OTHERS: "selectedOthers",
     SELECTED_FILTER_STATUS: "selectedFilterStatus"
 };
 
@@ -36,15 +37,17 @@ class RelValLayout extends Component {
     doUpdateData() {
         const {date, que} = this.props.match.params;
         const allArchs = RelValStore.getAllArchsForQue({date, que});
-	const allGPUs = RelValStore.getAllGPUsForQue({date, que});
+        const allGPUs = RelValStore.getAllGPUsForQue({date, que});
+        const allOthers = RelValStore.getAllOthersForQue({date, que});
         const allFlavors = RelValStore.getAllFlavorsForQue({date, que});
         const structure = RelValStore.getFlavorStructure({date, que});
-        this.setState({structure, allArchs, allGPUs, allFlavors, date, que});
+        this.setState({structure, allArchs, allGPUs, allOthers, allFlavors, date, que});
 
         const {location, history} = this.props;
         if (location.search === "") {
             partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_ARCHS, allArchs);
-	    partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_GPUS, allGPUs);
+            partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_GPUS, allGPUs);
+            partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_OTHERS, allOthers);
             partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_FLAVORS, allFlavors);
             partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_STATUS, [STATUS_ENUM.FAILED]);
             goToLinkWithoutHistoryUpdate(history, location);
@@ -58,14 +61,16 @@ class RelValLayout extends Component {
         const oldQue = this.props.match.params.que;
         if (date !== oldDate || que !== oldQue) {
             const allArchs = RelValStore.getAllArchsForQue({date, que});
-	    const allGPUs = RelValStore.getAllGPUsForQue({date, que});
+            const allGPUs = RelValStore.getAllGPUsForQue({date, que});
+            const allOthers = RelValStore.getAllOthersForQue({date, que});
             const allFlavors = RelValStore.getAllFlavorsForQue({date, que});
             const structure = RelValStore.getFlavorStructure({date, que});
-            this.setState({structure, allArchs, allGPUs, allFlavors, date, que});
+            this.setState({structure, allArchs, allGPUs, allOthers, allFlavors, date, que});
 
             const {location, history} = newProps;
             partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_ARCHS, allArchs);
-	    partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_GPUS, allGPUs);
+            partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_GPUS, allGPUs);
+            partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_OTHERS, allOthers);
             partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_FLAVORS, allFlavors);
             goToLinkWithoutHistoryUpdate(history, location);
         }
@@ -97,17 +102,23 @@ class RelValLayout extends Component {
     }
 
     render() {
-        const {allArchs = [], allGPUs = [], allFlavors = []} = this.state;
-        let {selectedArchs, selectedGPUs, selectedFlavors, selectedStatus, selectedFilterStatus} = queryString.parse(this.props.location.search);
+        const {allArchs = [], allGPUs = [], allOthers = [], allFlavors = []} = this.state;
+        let {selectedArchs, selectedGPUs, selectedOthers, selectedFlavors, selectedStatus, selectedFilterStatus} = queryString.parse(this.props.location.search);
         const {structure = {}} = this.state;
         const {date, que} = this.props.match.params;
         const {location, history} = this.props;
-	if (!selectedGPUs){selectedGPUs="";}
-	if (typeof selectedGPUs !== 'string') {
-	    selectedGPUs = selectedGPUs.filter(item => item !== "");
-	    if (selectedGPUs.length == 0){selectedGPUs = "";}
-	    else if (selectedGPUs.length == 1){selectedGPUs = selectedGPUs[0];}
-	}
+        if (!selectedGPUs){selectedGPUs="";}
+        if (!selectedOthers){selectedOthers="";}
+        if (typeof selectedGPUs !== 'string') {
+            selectedGPUs = selectedGPUs.filter(item => item !== "");
+            if (selectedGPUs.length === 0){selectedGPUs = "";}
+            else if (selectedGPUs.length === 1){selectedGPUs = selectedGPUs[0];}
+        }
+        if (typeof selectedOthers !== 'string') {
+          selectedOthers = selectedOthers.filter(item => item !== "");
+          if (selectedOthers.length === 0){selectedOthers = "";}
+          else if (selectedOthers.length === 1){selectedOthers = selectedOthers[0];}
+        }
         const controlList = [
             <TogglesShowRow
                 rowName={'Flavors'}
@@ -125,12 +136,20 @@ class RelValLayout extends Component {
                     partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_ARCHS, v);
                     goToLinkWithoutHistoryUpdate(history, location);
                 }}/>,
-	    <TogglesShowRow
+          <TogglesShowRow
                 rowName={'GPUs'}
                 nameList={allGPUs}
                 initSelections={selectedGPUs}
                 callbackToParent={(v) => {
                     partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_GPUS, v);
+                    goToLinkWithoutHistoryUpdate(history, location);
+                }}/>,
+            <TogglesShowRow
+                rowName={'Others'}
+                nameList={allOthers}
+                initSelections={selectedOthers}
+                callbackToParent={(v) => {
+                    partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_OTHERS, v);
                     goToLinkWithoutHistoryUpdate(history, location);
                 }}/>,
             [
@@ -157,17 +176,19 @@ class RelValLayout extends Component {
         const resultTableWithStepsSettings = {
             style: {height: this.getSizeForTable()},
             allArchs,
-	    allGPUs,
+            allGPUs,
+            allOthers,
             allFlavors,
             selectedArchs,
-	    selectedGPUs,
+            selectedGPUs,
+            selectedOthers,
             selectedFlavors,
             selectedStatus,
             structure,
             selectedFilterStatus,
             ibDate: date,
             ibQue: que,
-            filteredRelVals: filterRelValStructure({structure, selectedArchs, selectedGPUs, selectedFlavors, selectedStatus})
+            filteredRelVals: filterRelValStructure({structure, selectedArchs, selectedGPUs, selectedOthers, selectedFlavors, selectedStatus})
         };
 
         return (

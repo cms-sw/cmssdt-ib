@@ -163,33 +163,41 @@ export function getStructureFromAvalableRelVals(relvalInfoObject) {
             config[date][que] = {
                 flavors: {},
                 allArchs: [],
-		allGPUs: [],
+                allGPUs: [],
+                allOthers: [],
                 dataLoaded: false
             }
         }
         config[date][que].flavors[flavor] = {};
-        let uarchs = [];
-	let ugpus = [];
         archs.forEach(archx => {
             let parts = archx.split(":");
             let arch = parts.shift();
-	    if (!config[date][que].flavors[flavor][arch]){
-              config[date][que].flavors[flavor][arch] = {}
-	    }
-	    let gpu = "";
-            config[date][que].flavors[flavor][arch][""] = {date, que, flavor, arch, gpu}
-	    uarchs.push(arch);
-            parts
-              .filter(p => p.startsWith("gpu_"))
-              .map(p => p.slice(4))
-              .forEach(gpu => {
-                config[date][que].flavors[flavor][arch][gpu] = {date, que, flavor, arch, gpu};
-		ugpus.push(gpu)
-            // TODO sort config[date][que].flavors[flavor] somehow, for now it is sorted at 2 places
+            if (!config[date][que].flavors[flavor][arch]){
+                config[date][que].flavors[flavor][arch] = {}
+            }
+            let type = "";
+            let name = "";
+            config[date][que].flavors[flavor][arch][type] = {};
+            config[date][que].flavors[flavor][arch][type][name] = {date, que, flavor, arch, type, name};
+            config[date][que].allArchs.push(arch);
+            parts.forEach(part => {
+                let items = part.split(";");
+                let type = items.shift();
+                config[date][que].flavors[flavor][arch][type] = {};
+                items.forEach(name => {
+                    config[date][que].flavors[flavor][arch][type][name] = {date, que, flavor, arch, type, name};
+                });
+                if (type === "gpu") {
+                    config[date][que].allGPUs = config[date][que].allGPUs.concat(items);
+                }
+                else if (type === "other") {
+                    config[date][que].allOthers = config[date][que].allOthers.concat(items);
+                }
             });
         });
-	config[date][que].allArchs = _.uniq(config[date][que].allArchs.concat(uarchs));
-	config[date][que].allGPUs = _.uniq(config[date][que].allGPUs.concat(ugpus));
+        config[date][que].allArchs = _.uniq(config[date][que].allArchs);
+        config[date][que].allGPUs = _.uniq(config[date][que].allGPUs);
+        config[date][que].allOthers = _.uniq(config[date][que].allOthers);
     });
     return config;
 }
@@ -236,45 +244,44 @@ export function valueInTheList(list = [], value) {
     }
 }
 
-export function filterRelValStructure({structure, selectedArchs, selectedGPUs, selectedFlavors, selectedStatus}) {
+export function filterRelValStructure({structure, selectedArchs, selectedGPUs, selectedOthers, selectedFlavors, selectedStatus}) {
     /**
      * This will return selected relvals .
      */
     let filteredRelvals = [];
     let {allRelvals = [], flavors} = structure;
     const filteredFlavorKeys = filterNameList(getObjectKeys(flavors), selectedFlavors);
-    for (let i = 0; i < allRelvals.length; i++) {
-        let relVal = allRelvals[i];
+    allRelvals.forEach( relVal => {
         let statusMap = {}; // all available status for RelVal row
-        for (let z = 0; z < filteredFlavorKeys.length; z++) {
-            let flavor = filteredFlavorKeys[z];
-            let archKeys = getObjectKeys(flavors[flavor]);
-            let filteredArchKeys = filterNameList(archKeys, selectedArchs);
-            for (let x = 0; x < filteredArchKeys.length; x++) {
-                const archKey = filteredArchKeys[x];
-		let gpuKeys = getObjectKeys(flavors[flavor][archKey]);
-		let filteredGPUKeys = filterNameList(gpuKeys, selectedGPUs);
-		for(let y = 0; y < filteredGPUKeys.length; y++) {
-		    const gpuKey = filteredGPUKeys[y];
-                    const {id} = relVal;
-                    const fullRelVal = flavors[flavor][archKey][gpuKey][id];
-                    if (fullRelVal) {
-                        // check if RelVal is Failed | KNOWN_FAILED | PASSED
-                        if (doMarkAsFailed(fullRelVal)) {
-                            // if workflow is failed at least in one ib, mark all row failed
-                            statusMap[STATUS_ENUM.FAILED] = true;
-                        } else if (!(statusMap === STATUS_ENUM.FAILED) && isRelValKnownFailed(fullRelVal)) {
-                            // if no failed
-                            statusMap[STATUS_ENUM.KNOWN_FAILED] = true;
-                        } else if (!(statusMap === STATUS_ENUM.FAILED) && !(statusMap === STATUS_ENUM.KNOWN_FAILED)) {
-                            // if no failed and known_failed
-                            statusMap[STATUS_ENUM.PASSED] = true;
+        filteredFlavorKeys.forEach(flavor => {
+            let filteredArchKeys = filterNameList(getObjectKeys(flavors[flavor]), selectedArchs);
+            filteredArchKeys.forEach( arch => {
+                let types = Object.keys(flavors[flavor][arch]);
+                types.forEach( type => {
+                    let typeKeys = getObjectKeys(flavors[flavor][arch][type]);
+                    let filteredTypeKeys = [""];
+                    if (type === "gpu"){ filteredTypeKeys = filterNameList(typeKeys, selectedGPUs); }
+                    else if (type === "other"){ filteredTypeKeys = filterNameList(typeKeys, selectedOthers); }
+                    filteredTypeKeys.forEach( name => {
+                        const {id} = relVal;
+                        const fullRelVal = flavors[flavor][arch][type][name][id];
+                        if (fullRelVal) {
+                            // check if RelVal is Failed | KNOWN_FAILED | PASSED
+                            if (doMarkAsFailed(fullRelVal)) {
+                                // if workflow is failed at least in one ib, mark all row failed
+                                statusMap[STATUS_ENUM.FAILED] = true;
+                            } else if (!(statusMap === STATUS_ENUM.FAILED) && isRelValKnownFailed(fullRelVal)) {
+                                // if no failed
+                                statusMap[STATUS_ENUM.KNOWN_FAILED] = true;
+                            } else if (!(statusMap === STATUS_ENUM.FAILED) && !(statusMap === STATUS_ENUM.KNOWN_FAILED)) {
+                                // if no failed and known_failed
+                                statusMap[STATUS_ENUM.PASSED] = true;
+                            }
                         }
-	            }
-                }
-            }
-        }
-
+	                  });
+                });
+            });
+        });
         let statusList = getObjectKeys(statusMap);
         for (let i = 0; i < statusList.length; i++) {
             if (valueInTheList(selectedStatus, statusList[i])) {
@@ -282,8 +289,7 @@ export function filterRelValStructure({structure, selectedArchs, selectedGPUs, s
                 break;
             }
         }
-
-    }
+    });
     return filteredRelvals;
 }
 
