@@ -4,11 +4,20 @@ This is source code for new [CMSSDT IB page](https://cmssdt.cern.ch/SDT/html/cms
 
 ## To start local development
 ```sh
-docker run -it --rm --name my-running-script -v "$PWD":/usr/src/app:z -w /usr/src/app -p 3000:3000  node:8 bash  # starts NPM in docker enviroment
-cd public && ./updateData.sh && cd ..  # populate enviroment with latest testing data 
-npm install  # install dependencies
-npm run start  # run development server
+# Start node container
+docker run -it --rm --name my-running-script -v "$PWD":/usr/src/app:z -w /usr/src/app -p 3000:3000  node:18 bash  # starts NPM in docker enviroment
+# populate enviroment with latest testing data
+./public/updateData.sh
+# install dependencies
+npm install
+# For development server
+npm run start
+# For testing the changes in production build
+npm run build
+npx serve -s build
 ```
+
+Open browser and access localhost:3000
 
 ## Documentation
 
