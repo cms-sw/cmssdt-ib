@@ -6,7 +6,11 @@ export function goToLinkWithoutHistoryUpdate(history,location) {
 
 export function partiallyUpdateLocationQuery(location, queryKey, queryValues) {
     let currentQuery = queryString.parse(location.search);
-    currentQuery[queryKey] = queryValues;
+    if (queryValues === "") {
+        delete currentQuery[queryKey];
+    } else {
+        currentQuery[queryKey] = queryValues;
+    }
     location.search = queryString.stringify(currentQuery);
     return location;
 }

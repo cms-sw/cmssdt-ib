@@ -136,7 +136,7 @@ class RelValLayout extends Component {
                     partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_ARCHS, v);
                     goToLinkWithoutHistoryUpdate(history, location);
                 }}/>,
-          <TogglesShowRow
+            (allGPUs.length > 0) && <TogglesShowRow
                 rowName={'GPUs'}
                 nameList={allGPUs}
                 initSelections={selectedGPUs}
@@ -144,7 +144,7 @@ class RelValLayout extends Component {
                     partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_GPUS, v);
                     goToLinkWithoutHistoryUpdate(history, location);
                 }}/>,
-            <TogglesShowRow
+            (allOthers.length > 0) && <TogglesShowRow
                 rowName={'Others'}
                 nameList={allOthers}
                 initSelections={selectedOthers}
@@ -171,7 +171,7 @@ class RelValLayout extends Component {
                         goToLinkWithoutHistoryUpdate(history, location);
                     }}/>
             ]
-        ];
+        ].filter(Boolean);
 
         const resultTableWithStepsSettings = {
             style: {height: this.getSizeForTable()},
