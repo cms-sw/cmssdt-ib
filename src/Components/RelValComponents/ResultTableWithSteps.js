@@ -236,9 +236,10 @@ class ResultTableWithSteps extends Component {
                 filterNameList(archKeys, selectedArchs).forEach(archKey => {
                     Object.keys(structure.flavors[flavorKey][archKey]).forEach(typeKey => {
                         let typeKeys = getObjectKeys(structure.flavors[flavorKey][archKey][typeKey]);
-                        let selectedKeys = [""]
+                        let selectedKeys = [];
                         if (typeKey === "gpu") { selectedKeys = filterNameList(typeKeys, selectedGPUs);}
-                        if (typeKey === "other") { selectedKeys = filterNameList(typeKeys, selectedOthers);}
+                        else if (typeKey === "other") { selectedKeys = filterNameList(typeKeys, selectedOthers);}
+                        else if (selectedGPUs === "" ) {selectedKeys.push("");}
                         selectedKeys.forEach(nameKey => {
                             configObject.columns.push({
                                 Header: () => {
