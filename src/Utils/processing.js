@@ -259,9 +259,10 @@ export function filterRelValStructure({structure, selectedArchs, selectedGPUs, s
                 let types = Object.keys(flavors[flavor][arch]);
                 types.forEach( type => {
                     let typeKeys = getObjectKeys(flavors[flavor][arch][type]);
-                    let filteredTypeKeys = [""];
+                    let filteredTypeKeys = [];
                     if (type === "gpu"){ filteredTypeKeys = filterNameList(typeKeys, selectedGPUs); }
                     else if (type === "other"){ filteredTypeKeys = filterNameList(typeKeys, selectedOthers); }
+                    else if (selectedGPUs === "") { filteredTypeKeys.push(""); }
                     filteredTypeKeys.forEach( name => {
                         const {id} = relVal;
                         const fullRelVal = flavors[flavor][arch][type][name][id];

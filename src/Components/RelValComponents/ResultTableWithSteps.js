@@ -271,7 +271,6 @@ class ResultTableWithSteps extends Component {
                                 accessor: relVal => {
                                     let data;
                                     if (structure.flavors[flavorKey][archKey][typeKey][nameKey]) {
-                                        console.log('RELVAL:', relVal.id, flavorKey, archKey, typeKey, nameKey, structure.flavors[flavorKey][archKey][typeKey][nameKey]);
                                         data = structure.flavors[flavorKey][archKey][typeKey][nameKey][relVal.id];
                                     }
                                     if (data) {
