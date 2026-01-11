@@ -1,4 +1,5 @@
 import React, {Component} from "react";
+import ReactDOM from "react-dom";
 import Navbar from "react-bootstrap/es/Navbar";
 import Nav from "react-bootstrap/es/Nav";
 import {Button, Col, FormGroup, Glyphicon, MenuItem, Modal, Row} from "react-bootstrap";
@@ -12,11 +13,28 @@ class RelValNavigation extends Component {
 
     constructor(props, context) {
         super(props, context);
+        this.navNode = null;
         this.handleShow = this.handleShow.bind(this);
         this.handleClose = this.handleClose.bind(this);
         this.state = {
             show: false
         };
+    }
+
+    componentDidMount() {
+        this.reportHeight();
+    }
+
+    componentDidUpdate() {
+        this.reportHeight();
+    }
+
+    reportHeight() {
+        if (!this.navNode || !this.props.onHeightChange) return;
+        const domNode = ReactDOM.findDOMNode(this.navNode);
+        if (domNode && domNode.offsetHeight) {
+            this.props.onHeightChange(domNode.offsetHeight);
+        }
     }
 
     handleClose() {
@@ -43,7 +61,7 @@ class RelValNavigation extends Component {
             </Modal>
         );
         return (
-            <Navbar fixedTop id={'navigation'}>
+            <Navbar fixedTop id={'navigation'} ref={(node) => { this.navNode = node; }}>
                 <Navbar.Header>
                     <Navbar.Brand>
                         <p>

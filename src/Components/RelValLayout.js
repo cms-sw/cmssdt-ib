@@ -25,8 +25,15 @@ class RelValLayout extends Component {
         super(props);
         this.doUpdateData = this.doUpdateData.bind(this);
         this.state = {
-            navigationHeight: 62,
+            navigationHeight: 0,
         };
+        this.handleNavHeightChange = this.handleNavHeightChange.bind(this);
+    }
+
+    handleNavHeightChange(height) {
+        if (this.state.navigationHeight !== height) {
+            this.setState({ navigationHeight: height });
+        }
     }
 
     componentWillMount() {
@@ -94,11 +101,11 @@ class RelValLayout extends Component {
     }
 
     getTopPadding() {
-        return this.state.navigationHeight + 20;
+        return this.state.navigationHeight;
     }
 
     getSizeForTable() {
-        return document.documentElement.clientHeight - this.getTopPadding() - 20
+        return document.documentElement.clientHeight - this.getTopPadding();
     }
 
     render() {
@@ -192,9 +199,13 @@ class RelValLayout extends Component {
         };
 
         return (
-            
             <div className={'container'} style={{paddingTop: this.getTopPadding()}}>
-                <RelValNavigation que={que} relvalInfo={que + " " + date} controlList={controlList} history={history}/>
+                <RelValNavigation
+                    que={que}
+                    relvalInfo={que + " " + date}
+                    controlList={controlList} history={history}
+                    onHeightChange={this.handleNavHeightChange}
+                />
                 <ResultTableWithSteps
                     {...resultTableWithStepsSettings}
                 />

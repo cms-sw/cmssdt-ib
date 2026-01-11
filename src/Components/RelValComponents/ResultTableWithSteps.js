@@ -244,27 +244,33 @@ class ResultTableWithSteps extends Component {
                             configObject.columns.push({
                                 Header: () => {
                                     const statistics = structure.relvalStatus[flavorKey][archKey][typeKey][nameKey];
-                                    const statuslabels =
+                                    const statusLabels = (
                                         <p key={uuid.v4()}>
                                             {this._renderLabel(statistics.passed, LABEL_COLOR.PASSED_COLOR)}
                                             {this._renderLabel(statistics.known_failed, LABEL_COLOR.PASSED_ERRORS_COLOR)}
                                             {this._renderLabel(statistics.failed, LABEL_COLOR.FAILED_COLOR)}
                                             {/*{this._renderLabel(statistics.size, "grey")}*/}
-                                        </p>;
-                                    const typeName = <p key={uuid.v4()}><b>{nameKey}</b></p>;
-                                    const archNames = (
-                                        archKey.split("_").map(str => {
-                                            const color = archColorScheme[str];
-                                            return (
-                                                <div style={{backgroundColor: color, paddingLeft: 6.3}}
-                                                     key={uuid.v4()}>
-                                                    <span style={{color: "white"}}>{" " + str}</span>
-                                                </div>
-                                            )
-                                        })
+                                        </p>
                                     );
-                                    if (typeKey === ""){return [...archNames, statuslabels];}
-                                    return [...archNames, typeName, statuslabels]
+                                    const typeLabel = typeKey !== "" && (
+                                        <p key={uuid.v4()}><b>{nameKey}</b></p>
+                                    );
+                                    const archLabels = archKey.split("_").map(str => (
+                                        <div key={uuid.v4()}
+                                            style={{backgroundColor: archColorScheme[str],
+                                            color: "white",
+                                            padding: "2px 6px",
+                                            marginBottom: 1,
+                                            borderRadius: 2}}
+                                        >{str}</div>
+                                    ));
+                                    return (
+                                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", height: "auto", overflow: "visible" }}>
+                                            {archLabels}
+                                            {typeLabel}
+                                            {statusLabels}
+                                        </div>
+                                    );
                                 },
                                 // accessor: "id",
                                 // Used for filtering

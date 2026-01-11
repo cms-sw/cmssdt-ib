@@ -5,6 +5,7 @@ import MenuItem from "react-bootstrap/es/MenuItem";
 import {Dropdown, Glyphicon} from "react-bootstrap";
 import {getCurrentIbTag, getDisplayName} from "../../Utils/processing";
 import {GpuRelvalsLabel, GpuQALabel} from './GpuTestLabel';
+import {OtherRelvalsLabel} from './OtherTestLabel';
 
 const {statusLabelsConfigs} = config;
 
@@ -169,17 +170,42 @@ class StatusLabels extends Component {
         if (showOnlyIbTag) {
             return <p>{StatusLabels.renderIBTag(IBGroup, ibGroupType)}</p>
         } else {
-	    let menu_data = [StatusLabels.renderIBTag(IBGroup, ibGroupType)]
-	    if (ib && ib.gpu_data){
-                if (ib.gpu_data && ib.gpu_data.relvals){
-		    menu_data.push(<GpuRelvalsLabel key="gpu-relvals" gpuTests={ib.gpu_data.relvals} />);
-		}
-		if (ib.gpu_data && ib.gpu_data.qa){
-		    menu_data.push(<GpuQALabel key="gpu-qa" gpuTests={ib.gpu_data.qa} />);
-		}
-	    }
-	    menu_data.push(statusLabelsConfigs.map(conf => StatusLabels.renderLabel(conf, ib)));
-	    return (<p>{menu_data}</p>)
+            let menu_data = [StatusLabels.renderIBTag(IBGroup, ibGroupType)]
+            if (ib) {
+                if (ib.gpu_data){
+                    if (ib.gpu_data.relvals){
+                        menu_data.push(<GpuRelvalsLabel key="gpu-relvals" gpuTests={ib.gpu_data.relvals} />);
+                    }
+                    if (ib.gpu_data.qa){
+                        menu_data.push(<GpuQALabel key="gpu-qa" gpuTests={ib.gpu_data.qa} />);
+                    }
+                }
+                let relvals = {};
+                if (ib.other_data) {
+                    if (ib.other_data.relvals){
+                        relvals = ib.other_data.relvals;
+                    }
+                }
+                if (relvals) {
+                   const rntupleRelvals = Object.fromEntries(
+                       Object.entries(relvals || {})
+                           .filter(([k]) => k.startsWith("rntuple/"))
+                           .map(([k, v]) => [k.replace(/^rntuple\//, ''), v])  // strip prefix
+                    );
+                    if (Object.keys(rntupleRelvals).length) {
+                        menu_data.push(
+                            <OtherRelvalsLabel
+                                key="other-rntuple-relvals"
+                                otherTests={rntupleRelvals}
+                                type_name="rntuple"
+                                title="RNTuple"
+                            />
+                        );
+                    }
+                }
+            }
+            menu_data.push(statusLabelsConfigs.map(conf => StatusLabels.renderLabel(conf, ib)));
+            return (<p>{menu_data}</p>)
         }
     }
 }
