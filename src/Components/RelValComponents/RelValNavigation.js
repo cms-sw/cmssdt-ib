@@ -14,6 +14,7 @@ class RelValNavigation extends Component {
     constructor(props, context) {
         super(props, context);
         this.navNode = null;
+        this.lastReportedHeight = 0;
         this.handleShow = this.handleShow.bind(this);
         this.handleClose = this.handleClose.bind(this);
         this.state = {
@@ -32,8 +33,11 @@ class RelValNavigation extends Component {
     reportHeight() {
         if (!this.navNode || !this.props.onHeightChange) return;
         const domNode = ReactDOM.findDOMNode(this.navNode);
-        if (domNode && domNode.offsetHeight) {
-            this.props.onHeightChange(domNode.offsetHeight);
+        if (!domNode) return;
+        const height = domNode.offsetHeight;
+        if (height !== this.lastReportedHeight) {
+            this.lastReportedHeight = height;
+            this.props.onHeightChange(height);
         }
     }
 
@@ -74,7 +78,7 @@ class RelValNavigation extends Component {
                     <Navbar.Toggle/>
                     
                 </Navbar.Header>
-                <Navbar.Collapse>
+                <Navbar.Collapse onExited={() => this.reportHeight()}>
                     <Nav pullRight>
                         <button className="btn btn-default navbar-btn" onClick={this.handleShow}>
                             <Glyphicon glyph="question-sign"/> Legend
