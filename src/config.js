@@ -1,6 +1,7 @@
 import {checkLabelType, getCurrentIbTag} from "./Utils/processing";
 import _ from 'underscore';
 
+const cmssdt_server = process.env.REACT_APP_CMSSDT_SERVER || "";
 export const STATUS_ENUM = {
     found: "found",
     passed: "passed",
@@ -80,11 +81,11 @@ const urls = {
     dataDir: "/SDT/html/data/",
     releaseStructure: "/SDT/html/data/structure.json",
     latestIBSummary: "/SDT/html/data/LatestIBsSummary.json",
-    buildOrUnitTestUrl: "/SDT/cgi-bin/showBuildLogs.py/",
+    buildOrUnitTestUrl: `${cmssdt_server}/SDT/cgi-bin/showBuildLogs.py/`,
     scramDetailUrl: "http://cms-sw.github.io/scramDetail.html#",
     relvalLogDetailUrl: "https://cms-sw.github.io/relvalLogDetail.html#",
-    fwliteUrl: "/SDT/cgi-bin/showBuildLogs.py/fwlite/",
-    showAddOnLogsUrls: "/SDT/cgi-bin//showAddOnLogs.py/",
+    fwliteUrl: `${cmssdt_server}/SDT/cgi-bin/showBuildLogs.py/fwlite/`,
+    showAddOnLogsUrls: `${cmssdt_server}/SDT/cgi-bin//showAddOnLogs.py/`,
     relVals: "https://cms-sw.github.io/relvalLogDetail.html#",
     commits: "https://github.com/cms-sw/cmsdist/commits/",
     newRelVals: (releaseQue, date) => `#/relVal/${releaseQue}/${date}`,

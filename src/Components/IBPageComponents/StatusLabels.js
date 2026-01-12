@@ -4,8 +4,8 @@ import uuid from 'uuid';
 import MenuItem from "react-bootstrap/es/MenuItem";
 import {Dropdown, Glyphicon} from "react-bootstrap";
 import {getCurrentIbTag, getDisplayName} from "../../Utils/processing";
-import {GpuRelvalsLabel, GpuQALabel} from './GpuTestLabel';
-import {OtherRelvalsLabel} from './OtherTestLabel';
+import {UnitTestsLabel} from './UnitTestsLabel';
+import {RelvalsLabel} from './RelvalsLabel';
 
 const {statusLabelsConfigs} = config;
 
@@ -172,13 +172,23 @@ class StatusLabels extends Component {
         } else {
             let menu_data = [StatusLabels.renderIBTag(IBGroup, ibGroupType)]
             if (ib) {
-                if (ib.gpu_data){
-                    if (ib.gpu_data.relvals){
-                        menu_data.push(<GpuRelvalsLabel key="gpu-relvals" gpuTests={ib.gpu_data.relvals} />);
-                    }
-                    if (ib.gpu_data.qa){
-                        menu_data.push(<GpuQALabel key="gpu-qa" gpuTests={ib.gpu_data.qa} />);
-                    }
+                if (ib.gpu_data && ib.gpu_data.relvals){
+                    menu_data.push(
+                        <RelvalsLabel
+                            key="gpu-relvals"
+                            tests={ib.gpu_data.relvals}
+                            type_name="gpu"
+                        />
+                    );
+                }
+                if (ib.gpu_data && ib.gpu_data.qa){
+                    menu_data.push(
+                        <UnitTestsLabel
+                            key="gpu-qa"
+                            tests={ib.gpu_data.qa}
+                            type_name="gpu"
+                        />
+                    );
                 }
                 let relvals = {};
                 if (ib.other_data) {
@@ -194,11 +204,10 @@ class StatusLabels extends Component {
                     );
                     if (Object.keys(rntupleRelvals).length) {
                         menu_data.push(
-                            <OtherRelvalsLabel
+                            <RelvalsLabel
                                 key="other-rntuple-relvals"
-                                otherTests={rntupleRelvals}
+                                tests={rntupleRelvals}
                                 type_name="rntuple"
-                                title="RNTuple"
                             />
                         );
                     }
