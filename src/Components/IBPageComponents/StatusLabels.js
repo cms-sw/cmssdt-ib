@@ -21,10 +21,10 @@ class StatusLabels extends Component {
         }
     }
 
-    static formatLabel({glyphicon, name, url, labelColor}) {
+    static formatLabel({glyphicon, name, url, labelColor, target, rel}) {
         if (url) {
             return (
-                <a href={url} key={uuid.v4()} style={{background:labelColor}}>
+                <a href={url} key={uuid.v4()} style={{background:labelColor}} target={target} rel={rel}>
                     <span key={uuid.v4()} className={`glyphicon ${glyphicon}`}/>
                     <span key={uuid.v4()} > {name} </span>
                 </a>
@@ -41,7 +41,9 @@ class StatusLabels extends Component {
         return {
             name: config.name,
             glyphicon: config.glyphicon ? config.glyphicon : "glyphicon-list-alt",
-            url: config.getUrl ? config.getUrl(ib, result) : undefined
+            url: config.getUrl ? config.getUrl(ib, result) : undefined,
+            target: config.target,
+            rel: config.rel
         }
     };
 

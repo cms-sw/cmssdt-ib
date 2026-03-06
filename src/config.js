@@ -324,6 +324,8 @@ export const config = {
             //add_igprof_tests_link
             key: "vtune",
             name: "Vtune",
+            target: "_blank",
+            rel: "noopener noreferrer",
             getUrl: function (ib, result) {
                 return "https://cmssdt.cern.ch/vtune/ui/" + getCurrentIbTag(ib) + "/" + result.data;
             }
