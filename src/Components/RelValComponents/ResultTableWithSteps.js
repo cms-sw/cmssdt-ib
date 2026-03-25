@@ -1,399 +1,858 @@
-import React, {Component} from 'react';
-import ReactTable from 'react-table';
-import 'react-table/react-table.css';
-import ExitCodeStore from "../../Stores/ExitCodeStore";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useTable, useExpanded, useFilters, usePagination } from "react-table";
+import { Modal, Button, OverlayTrigger, Popover } from "react-bootstrap";
+import { CopyToClipboard } from "react-copy-to-clipboard";
+import { v4 as uuidv4 } from "uuid";
+import PropTypes from "prop-types";
+
 import * as config from "../../relValConfig";
-import {LABEL_COLOR, LABELS_TEXT, RELVAL_STATUS_ENUM} from "../../relValConfig";
-import uuid from 'uuid';
-import Button from "react-bootstrap/es/Button";
-import {Modal, OverlayTrigger, Popover} from "react-bootstrap";
-import CommandStore from "../../Stores/CommandStore";
+import { LABEL_COLOR, LABELS_TEXT, RELVAL_STATUS_ENUM } from "../../relValConfig";
+import { useExitCode } from "../../context/ExitCodeContext";
+import { useCommand } from "../../context/CommandContext";
+import { useShowArch } from "../../context/ShowArchContext";
 import {
-    filterNameList,
-    getDisplayName,
-    getObjectKeys,
-    isRelValKnownFailed, isRelValTrackedForFailed,
-    valueInTheList
+  filterNameList,
+  getDisplayName,
+  getObjectKeys,
+  isRelValKnownFailed,
+  valueInTheList,
 } from "../../Utils/processing";
-import {CopyToClipboard} from 'react-copy-to-clipboard';
-import ShowArchStore from '../../Stores/ShowArchStore';
 
-const {urls} = config;
+const { urls } = config;
 
-/**
- * returns the link address for a given Ib and an arch
- */
-function getLogAddress(arch, ib, step, workflowName, workflowID, wasDASErr, typeKey, nameKey) {
-    // TODO fix relvals
-    let filename = '';
-    if (!wasDASErr) {
-        filename = 'step' + step + '_' + workflowName + '.log'
-    } else {
-        filename = 'step1_dasquery.log';
-    }
-    return urls.relValLog(arch, ib, workflowID, workflowName, filename, typeKey, nameKey)
-}
+/* =========================================================
+   UI size knobs
+   ========================================================= */
+const UI_SIZES = {
+  tableFont: "0.88rem",
+  headerFont: "0.92rem",
+  archFont: "0.95rem",
+  archPaddingY: 5,
+  archPaddingX: 7,
+  badgeFont: "0.82rem",
+  badgePadY: 4,
+  badgePadX: 9,
+  workflowFont: "0.88rem",
+};
 
-function getLabelName(name) {
-    return LABELS_TEXT[name] ? LABELS_TEXT[name] : name;
-}
+/* =========================================================
+   Shared styles
+   ========================================================= */
+const styles = {
+  stickyTableHeader: {
+    position: "sticky",
+    top: 0,
+    zIndex: 20,
+    backgroundColor: "#f5f5f5",
+    boxShadow: "0 2px 4px rgba(0,0,0,0.04)",
+  },
+  stickyHeader: {
+    position: "sticky",
+    top: 0,
+    zIndex: 10,
+    background: "#fff",
+  },
+};
 
-function getIb(date, que, flavor) {
-    // CMSSW_10_1_X_2018-03-21-2300
-    return `${que}_${flavor}_${date}`;
-}
+/* ------------------------------------------------------------------ */
+/* Helper functions */
+/* ------------------------------------------------------------------ */
+const getLogAddress = (arch, ib, step, workflowName, workflowID, wasDASErr, typeKey, nameKey) => {
+  const filename = wasDASErr ? "step1_dasquery.log" : `step${step}_${workflowName}.log`;
+  return urls.relValLog(arch, ib, workflowID, workflowName, filename, typeKey, nameKey);
+};
 
-function getReleaseQue(ibQue) {
-    return ibQue + '_X';
-}
+const getLabelName = (name) => LABELS_TEXT[name] || name;
+const getIb = (date, que, flavor) => `${que}_${flavor}_${date}`;
+const getReleaseQue = (ibQue) => `${ibQue}_X`;
 
-class ResultTableWithSteps extends Component {
-    constructor(props) {
-        super(props);
-        this._loadData = this._loadData.bind(this);
-        this.state = {
-            showModal: false,
-            workFlowsToShow: [],
-        };
-    }
+/* ------------------------------------------------------------------ */
+/* Reusable text filter */
+/* ------------------------------------------------------------------ */
+const ColumnTextFilter = ({ column: { filterValue, setFilter, placeholder = "Filter..." } }) => {
+  return (
+    <input
+      value={filterValue || ""}
+      onChange={(e) => setFilter(e.target.value || undefined)}
+      placeholder={placeholder}
+      style={{
+        width: "100%",
+        padding: "6px 8px",
+        fontSize: "0.82rem",
+        border: "1px solid #d1d5db",
+        borderRadius: "8px",
+        outline: "none",
+        backgroundColor: "#fff",
+      }}
+    />
+  );
+};
 
-    _handleClose() {
-        this.setState({showModal: false});
-    }
+/* ------------------------------------------------------------------ */
+/* Status Badge Component */
+/* ------------------------------------------------------------------ */
+const StatusBadge = ({ text, color, onClick, glyphicon }) => {
+  const style = {
+    backgroundColor: color,
+    color: "white",
+    padding: `${UI_SIZES.badgePadY}px ${UI_SIZES.badgePadX}px`,
+    borderRadius: "6px",
+    fontSize: UI_SIZES.badgeFont,
+    fontWeight: 700,
+    margin: "0 3px",
+    display: "inline-flex",
+    alignItems: "center",
+    cursor: onClick ? "pointer" : "default",
+    transition: "all 0.2s ease",
+    whiteSpace: "nowrap",
+    lineHeight: 1.1,
+  };
 
-    _loadData() {
-        let workflowHashes = this.state.workflowHashes;
-        this.setState({
-            workFlowsToShow: CommandStore.getWorkFlowList(workflowHashes),
-        })
-    }
-
-    _handleShow(steps, cmdName) {
-        return () => {
-            this.setState({
-                cmdName,
-                showModal: true,
-                workflowHashes: steps.map(i => i.workflowHash),
-                workFlowsToShow: CommandStore.getWorkFlowList(steps.map(i => i.workflowHash))
-            });
+  return (
+    <span
+      style={style}
+      onClick={onClick}
+      onMouseEnter={(e) => {
+        if (onClick) {
+          e.currentTarget.style.transform = "translateY(-1px)";
+          e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.12)";
         }
-    }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "none";
+      }}
+    >
+      {glyphicon && <span style={{ marginRight: "4px" }}>{glyphicon}</span>}
+      {text}
+    </span>
+  );
+};
 
-    _renderLabel(text, color) {
-        return (
-            <span style={{backgroundColor: color}} className="label">
-                        {text}
-                    </span>
-        )
-    }
+/* ------------------------------------------------------------------ */
+/* Architecture Stack Component */
+/* ------------------------------------------------------------------ */
+const ArchStack = ({ arch, colorScheme }) => {
+  const archParts = arch.split("_");
 
-    _rowWithLabel(text, number, logUrl, steps, backgroundColor, cmdName, glyphicon) {
-        let logComponent;
-        let renderedGlyphicon = glyphicon ? (<span className={"glyphicon " + glyphicon}/> ): null;
-        if (logUrl) {
-            logComponent = (
-                <a target="_blank" href={logUrl}>
-                    <span style={{backgroundColor: backgroundColor}} className="btn label">
-                        {text} {renderedGlyphicon}
-                    </span>
-                </a>
-            )
-        } else {
-            logComponent = (
-                <span style={{backgroundColor: backgroundColor}} className="btn label disabled">
-                        {text}
-                    </span>
-            )
-        }
-        return (
-            <div key={uuid.v4()}>
-                <span className="btn label label-default" onClick={this._handleShow(steps, cmdName).bind(this)}>
-                    {number}
-                </span>
-                {logComponent}
-            </div>
-        )
-    }
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        borderRadius: "6px",
+        overflow: "hidden",
+        marginBottom: "6px",
+      }}
+    >
+      {archParts.map((part, idx) => (
+        <div
+          key={idx}
+          style={{
+            padding: `${UI_SIZES.archPaddingY}px ${UI_SIZES.archPaddingX}px`,
+            backgroundColor: colorScheme[part] || "#6c757d",
+            color: "white",
+            fontWeight: 800,
+            fontSize: UI_SIZES.archFont,
+            textAlign: "center",
+            lineHeight: 1.15,
+            borderBottom: idx < archParts.length - 1 ? "1px solid rgba(255,255,255,0.22)" : "none",
+          }}
+        >
+          {part}
+        </div>
+      ))}
+    </div>
+  );
+};
 
-    _renderSteps({isExpanded, ib, archKey, data, typeKey, nameKey}) {
-        /**
-         * Return rendered content for the cell
-         */
-        let renderedStepList = [];
-        const {id, name, steps, exitcode} = data;
-        for (let i = steps.length; i > 0; i--) {
-            let logUrl, label;
-            let step = steps[i - 1];
-            const {status, errors, warnings} = step;
-            let glyphicon = isRelValTrackedForFailed(data) ? "glyphicon-eye-open" : null;
-            if (status === RELVAL_STATUS_ENUM.PASSED) {
-                let labelColor;
-                if (errors > 0) {
-                    labelColor = LABEL_COLOR.PASSED_ERRORS_COLOR
-                } else if (warnings > 0) {
-                    labelColor = LABEL_COLOR.PASSED_WARNINGS_COLOR
-                } else {
-                    labelColor = LABEL_COLOR.PASSED_COLOR
-                }
-                logUrl = getLogAddress(archKey, ib, i, name, id, false, typeKey, nameKey);
-                label = this._rowWithLabel(getLabelName(step.status), i, logUrl, steps, labelColor, name, glyphicon)
-            } else if (status === RELVAL_STATUS_ENUM.FAILED) {
-                let labelColor = isRelValKnownFailed(data) ? LABEL_COLOR.PASSED_COLOR : LABEL_COLOR.FAILED_COLOR;
-                logUrl = getLogAddress(archKey, ib, i, name, id, false, typeKey, nameKey);
-                label = this._rowWithLabel(ExitCodeStore.getExitCodeName(exitcode), i, logUrl, steps, labelColor, name, glyphicon)
-            } else if (status === RELVAL_STATUS_ENUM.DAS_ERROR) {
-                logUrl = getLogAddress(archKey, ib, i, name, id, true, typeKey, nameKey);
-                label = this._rowWithLabel(getLabelName(step.status), i, logUrl, steps, LABEL_COLOR.DAS_ERROR_COLOR, name, glyphicon)
-            } else if (status === RELVAL_STATUS_ENUM.NOTRUN) {
-                logUrl = getLogAddress(archKey, ib, i, name, id, false, typeKey, nameKey);
-                label = this._rowWithLabel(getLabelName(step.status), i, logUrl, steps, LABEL_COLOR.NOT_RUN_COLOR, name, glyphicon)
-            } else if (status === RELVAL_STATUS_ENUM.TIMEOUT) {
-                logUrl = getLogAddress(archKey, ib, i, name, id, false, typeKey, nameKey);
-                label = this._rowWithLabel(getLabelName(step.status), i, logUrl, steps, LABEL_COLOR.FAILED_COLOR, name, glyphicon)
+/* ------------------------------------------------------------------ */
+/* Step Cell Component */
+/* ------------------------------------------------------------------ */
+const StepCell = ({ stepNumber, status, onClick, logUrl, exitCode, errors, warnings }) => {
+  let bgColor = "#6c757d";
+
+  if (status === RELVAL_STATUS_ENUM.PASSED) {
+    if (errors > 0) bgColor = LABEL_COLOR.PASSED_ERRORS_COLOR;
+    else if (warnings > 0) bgColor = LABEL_COLOR.PASSED_WARNINGS_COLOR;
+    else bgColor = LABEL_COLOR.PASSED_COLOR;
+  } else if (status === RELVAL_STATUS_ENUM.FAILED) {
+    bgColor = LABEL_COLOR.FAILED_COLOR;
+  } else if (status === RELVAL_STATUS_ENUM.DAS_ERROR) {
+    bgColor = LABEL_COLOR.DAS_ERROR_COLOR;
+  } else if (status === RELVAL_STATUS_ENUM.NOTRUN) {
+    bgColor = LABEL_COLOR.NOT_RUN_COLOR;
+  } else if (status === RELVAL_STATUS_ENUM.TIMEOUT) {
+    bgColor = LABEL_COLOR.FAILED_COLOR;
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "4px", flexWrap: "wrap" }}>
+      <StatusBadge text={`Step ${stepNumber}`} color="#6c757d" onClick={onClick} />
+      {logUrl ? (
+        <a href={logUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+          <StatusBadge text={exitCode || getLabelName(status)} color={bgColor} />
+        </a>
+      ) : (
+        <StatusBadge text={exitCode || getLabelName(status)} color={bgColor} />
+      )}
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Pagination Component */
+/* ------------------------------------------------------------------ */
+const buttonStyle = {
+  margin: "0 2px",
+  padding: "6px 10px",
+  backgroundColor: "#fff",
+  border: "1px solid #ddd",
+  borderRadius: "6px",
+  cursor: "pointer",
+  fontSize: "0.85rem",
+  fontWeight: 700,
+};
+
+const Pagination = ({
+  canPreviousPage,
+  canNextPage,
+  pageOptions,
+  pageCount,
+  gotoPage,
+  nextPage,
+  previousPage,
+  setPageSize,
+  pageIndex,
+  pageSize,
+  pageSizeOptions = [20, 50, 100, 500, 1000],
+}) => {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "12px",
+        backgroundColor: "#f5f5f5",
+        borderTop: "1px solid #ddd",
+        fontSize: "0.9rem",
+      }}
+    >
+      <div>
+        <button onClick={() => gotoPage(0)} disabled={!canPreviousPage} style={buttonStyle}>
+          {"<<"}
+        </button>
+        <button onClick={() => previousPage()} disabled={!canPreviousPage} style={buttonStyle}>
+          {"<"}
+        </button>
+        <button onClick={() => nextPage()} disabled={!canNextPage} style={buttonStyle}>
+          {">"}
+        </button>
+        <button onClick={() => gotoPage(pageCount - 1)} disabled={!canNextPage} style={buttonStyle}>
+          {">>"}
+        </button>
+        <span style={{ marginLeft: "10px" }}>
+          Page <strong>{pageIndex + 1}</strong> of <strong>{pageOptions.length}</strong>
+        </span>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span>
+          Go to page:{" "}
+          <input
+            type="number"
+            defaultValue={pageIndex + 1}
+            onChange={(e) => {
+              const page = e.target.value ? Number(e.target.value) - 1 : 0;
+              gotoPage(page);
+            }}
+            style={{ width: "70px", padding: "4px 8px", borderRadius: 6, border: "1px solid #ddd" }}
+          />
+        </span>
+
+        <select
+          value={pageSize}
+          onChange={(e) => setPageSize(Number(e.target.value))}
+          style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #ddd" }}
+        >
+          {pageSizeOptions.map((ps) => (
+            <option key={ps} value={ps}>
+              Show {ps}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Main Component */
+/* ------------------------------------------------------------------ */
+const ResultTableWithSteps = ({
+  filteredRelVals = [],
+  selectedArchs = [],
+  selectedGPUs = [],
+  selectedOthers = [],
+  selectedFlavors = [],
+  selectedFilterStatus = [],
+  structure = { flavors: {} },
+  ibDate = "",
+  ibQue = "",
+  style = {},
+  allGPUs = [],
+  allArchs = [],
+  allOthers = [],
+  allFlavors = [],
+}) => {
+  const [showModal, setShowModal] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalCommands, setModalCommands] = useState([]);
+  const [copied, setCopied] = useState(false);
+
+  const { getColorsSchemeForQue } = useShowArch();
+  const archColorScheme = getColorsSchemeForQue(getReleaseQue(ibQue));
+
+  const { getExitCodeName } = useExitCode();
+  const { getWorkFlowList } = useCommand();
+
+  const doFilterColumn = valueInTheList(selectedFilterStatus, "On");
+
+  const handleClose = useCallback(() => {
+    setShowModal(false);
+    setCopied(false);
+  }, []);
+
+  const handleShow = useCallback(
+    async (steps, cmdName) => {
+      const hashes = steps.map((s) => s.workflowHash).filter(Boolean);
+      setModalTitle(cmdName);
+
+      const initialCommands = getWorkFlowList(hashes);
+      setModalCommands(initialCommands);
+      setShowModal(true);
+
+      const hasMissing = initialCommands.some((cmd) => !cmd || Object.keys(cmd).length === 0);
+
+      if (hasMissing && hashes.length > 0) {
+        getWorkFlowList(hashes, (updatedCommands) => {
+          setModalCommands(updatedCommands);
+        });
+      }
+    },
+    [getWorkFlowList]
+  );
+
+  // Build columns
+  const columns = useMemo(() => {
+    const cols = [
+      {
+        id: "expander",
+        Header: "",
+        width: 36,
+        disableFilters: true,
+        Cell: ({ row }) => (
+          <span
+            {...row.getToggleRowExpandedProps()}
+            style={{
+              cursor: "pointer",
+              display: "inline-block",
+              width: "100%",
+              textAlign: "center",
+              fontSize: "0.95rem",
+              fontWeight: 900,
+              userSelect: "none",
+            }}
+          >
+            {row.isExpanded ? "▼" : "▶"}
+          </span>
+        ),
+      },
+      {
+        Header: "#",
+        accessor: (row, i) => i + 1,
+        id: "index",
+        width: 52,
+        disableFilters: true,
+        Cell: ({ value }) => <b style={{ fontSize: UI_SIZES.workflowFont }}>{value}</b>,
+      },
+      {
+        Header: "Workflow #",
+        accessor: "id",
+        width: 110,
+        filter: "text",
+        disableFilters: !doFilterColumn,
+        Filter: (props) =>
+          doFilterColumn ? <ColumnTextFilter {...props} placeholder="Search workflow..." /> : null,
+        Cell: ({ value, row }) => (
+          <OverlayTrigger placement="top" overlay={<Popover id={`popover-${value}`}>{row.original.cmdName}</Popover>}>
+            <b style={{ cursor: "help", fontSize: UI_SIZES.workflowFont }}>{value}</b>
+          </OverlayTrigger>
+        ),
+      },
+    ];
+
+    if (!structure?.flavors) return cols;
+
+    const flavorKeys = filterNameList(getObjectKeys(structure.flavors).sort().reverse(), selectedFlavors);
+
+    flavorKeys.forEach((flavorKey) => {
+      const archKeys = filterNameList(getObjectKeys(structure.flavors[flavorKey]), selectedArchs);
+
+      archKeys.forEach((archKey) => {
+        const types = structure.flavors[flavorKey][archKey] || {};
+
+        Object.keys(types).forEach((typeKey) => {
+          let typeNames = getObjectKeys(types[typeKey] || {});
+          let selectedKeys = [];
+
+          if (typeKey === "gpu") {
+            selectedKeys = filterNameList(typeNames, selectedGPUs);
+          } else if (typeKey === "other") {
+            selectedKeys = filterNameList(typeNames, selectedOthers);
+          } else if (selectedGPUs.length === 0) {
+            selectedKeys.push("");
+          }
+
+          selectedKeys.forEach((nameKey) => {
+            const nameData = types[typeKey]?.[nameKey];
+            if (!nameData) return;
+
+            let statistics = { passed: 0, known_failed: 0, failed: 0 };
+
+            if (structure.relvalStatus?.[flavorKey]?.[archKey]?.[typeKey]?.[nameKey]) {
+              statistics = structure.relvalStatus[flavorKey][archKey][typeKey][nameKey];
             } else {
-                console.error('Unknown status')
+              Object.values(nameData).forEach((relVal) => {
+                if (relVal) {
+                  if (isRelValKnownFailed(relVal)) statistics.known_failed++;
+                  else if (relVal.exitcode !== 0) statistics.failed++;
+                  else statistics.passed++;
+                }
+              });
             }
 
-            renderedStepList.push(label);
-            if (!isExpanded) {
-                // if row is not expanded
-                break;
-            }
-        }
-        return renderedStepList;
-    }
+            cols.push({
+              Header: () => (
+                <div style={{ minWidth: "150px" }}>
+                  <div
+                    style={{
+                      fontWeight: 900,
+                      fontSize: "0.92rem",
+                      textAlign: "center",
+                      marginBottom: "6px",
+                      color: "#334155",
+                      borderBottom: "1px solid #dee2e6",
+                      paddingBottom: "4px",
+                    }}
+                  >
+                    {getDisplayName(flavorKey)}
+                  </div>
 
-    componentWillMount() {
-        CommandStore.on("change", this._loadData);
-        ShowArchStore.on("change", this.forceUpdate);
-    }
+                  <ArchStack arch={archKey} colorScheme={archColorScheme} />
 
-    componentWillUnmount() {
-        CommandStore.removeListener("change", this._loadData);
-        ShowArchStore.removeListener("change", this.forceUpdate);
-    }
-
-    render() {
-        let tableConfig = [];
-        const {filteredRelVals, selectedArchs, selectedGPUs, selectedOthers, selectedFlavors, style, selectedFilterStatus} = this.props;
-        const {structure = {}, ibDate, ibQue} = this.props;
-        const archColorScheme = ShowArchStore.getColorsSchemeForQue(
-            getReleaseQue(ibQue)
-        );
-        const doFilterColumn = valueInTheList(selectedFilterStatus, 'On');
-        const popoverClickRootClose = (
-            <Popover id="popover-trigger-click-root-close">
-                Copied!
-            </Popover>
-        );
-        const modalCmd = (
-            <Modal show={this.state.showModal} onHide={this._handleClose.bind(this)} bsSize="lg">
-                <Modal.Header closeButton>
-                    <Modal.Title>
-                        <div style={{overflow: 'auto'}}>
-                            {this.state.cmdName}
-                        </div>
-                    </Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    <div style={{overflow: 'auto'}}>
-                        {this.state.workFlowsToShow.map((i, index) => {
-                            return (
-                                <p key={uuid.v4()}>
-                                    <b>Step {index + 1}  </b>
-                                    <CopyToClipboard text={i.command}>
-                                        <OverlayTrigger
-                                            trigger="click"
-                                            rootClose
-                                            placement="bottom"
-                                            overlay={popoverClickRootClose}
-                                        >
-                                            <Button bsStyle="primary" bsSize="small">
-                                                Copy to clipboard
-                                            </Button>
-                                        </OverlayTrigger>
-                                    </CopyToClipboard>
-                                    <br/>
-                                    <code style={{whiteSpace: "pre-line"}}>{i.command}</code>
-                                </p>
-                            )
-                        })}
+                  {typeKey !== "" && nameKey !== "" && (
+                    <div
+                      style={{
+                        fontWeight: 900,
+                        marginTop: "4px",
+                        fontSize: "0.86rem",
+                        textAlign: "center",
+                        color: typeKey === "gpu" ? "#0ea5e9" : typeKey === "other" ? "#22c55e" : "#6c757d",
+                        lineHeight: 1.1,
+                      }}
+                    >
+                      {nameKey}
+                      {typeKey === "gpu" && " (GPU)"}
+                      {typeKey === "other" && " (Other)"}
                     </div>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button onClick={this._handleClose.bind(this)}>Close</Button>
-                </Modal.Footer>
-            </Modal>
-        );
-        if (structure.dataLoaded) {
-            let flavorKeys = getObjectKeys(structure.flavors).sort().reverse();
-            filterNameList(flavorKeys, selectedFlavors).forEach(flavorKey => {
-                let configObject = {
-                    Header: () => <div>{getDisplayName(flavorKey)}</div>,
-                    columns: []
-                };
-                let archKeys = getObjectKeys(structure.flavors[flavorKey]);
-                filterNameList(archKeys, selectedArchs).forEach(archKey => {
-                    Object.keys(structure.flavors[flavorKey][archKey]).forEach(typeKey => {
-                        let typeKeys = getObjectKeys(structure.flavors[flavorKey][archKey][typeKey]);
-                        let selectedKeys = [];
-                        if (typeKey === "gpu") { selectedKeys = filterNameList(typeKeys, selectedGPUs);}
-                        else if (typeKey === "other") { selectedKeys = filterNameList(typeKeys, selectedOthers);}
-                        else if (selectedGPUs === "" ) {selectedKeys.push("");}
-                        selectedKeys.forEach(nameKey => {
-                            configObject.columns.push({
-                                Header: () => {
-                                    const statistics = structure.relvalStatus[flavorKey][archKey][typeKey][nameKey];
-                                    const statusLabels = (
-                                        <p key={uuid.v4()}>
-                                            {this._renderLabel(statistics.passed, LABEL_COLOR.PASSED_COLOR)}
-                                            {this._renderLabel(statistics.known_failed, LABEL_COLOR.PASSED_ERRORS_COLOR)}
-                                            {this._renderLabel(statistics.failed, LABEL_COLOR.FAILED_COLOR)}
-                                            {/*{this._renderLabel(statistics.size, "grey")}*/}
-                                        </p>
-                                    );
-                                    const typeLabel = typeKey !== "" && (
-                                        <p key={uuid.v4()}><b>{nameKey}</b></p>
-                                    );
-                                    const archLabels = archKey.split("_").map(str => (
-                                        <div key={uuid.v4()}
-                                            style={{backgroundColor: archColorScheme[str],
-                                            color: "white",
-                                            padding: "2px 6px",
-                                            marginBottom: 1,
-                                            borderRadius: 2}}
-                                        >{str}</div>
-                                    ));
-                                    return (
-                                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", height: "auto", overflow: "visible" }}>
-                                            {archLabels}
-                                            {typeLabel}
-                                            {statusLabels}
-                                        </div>
-                                    );
-                                },
-                                // accessor: "id",
-                                // Used for filtering
-                                accessor: relVal => {
-                                    let data;
-                                    if (structure.flavors[flavorKey][archKey][typeKey][nameKey]) {
-                                        data = structure.flavors[flavorKey][archKey][typeKey][nameKey][relVal.id];
-                                    }
-                                    if (data) {
-                                        const {steps, exitcode} = data;
-                                        const last_step = steps[steps.length - 1];
-                                        const {status} = last_step;
-                                        if (status === RELVAL_STATUS_ENUM.PASSED) {
-                                            return getLabelName(status);
-                                        } else if (status === RELVAL_STATUS_ENUM.FAILED) {
-                                            return ExitCodeStore.getExitCodeName(exitcode);
-                                        } else if (status === RELVAL_STATUS_ENUM.DAS_ERROR) {
-                                            return getLabelName(status);
-                                        } else if (status === RELVAL_STATUS_ENUM.NOTRUN) {
-                                            return getLabelName(status);
-                                        } else if (status === RELVAL_STATUS_ENUM.TIMEOUT) {
-                                            return getLabelName(status);
-                                        } else {
-                                            return null;
-                                        }
-                                    } else {
-                                        return null;
-                                    }
-                                },
-                                id: flavorKey + "-" + archKey + "-" + typeKey + "-" + nameKey,
-                                filterable: doFilterColumn,
-                                Cell: props => {
-                                    // const id = props.value;
-                                    const id = props.original.id;
-                                    const {isExpanded} = props;
-                                    let data;
-                                    if (structure.flavors[flavorKey][archKey][typeKey][nameKey]) {
-                                        data = structure.flavors[flavorKey][archKey][typeKey][nameKey][id];
-                                    }
-                                    if (data) {
-                                        const ib = getIb(ibDate, ibQue, flavorKey);
-                                        let renderedStepList = this._renderSteps({isExpanded, ib, archKey, data, typeKey, nameKey});
-                                        return <div style={{
-                                            width: `${props.value}%`,
-                                            height: '100%',
-                                            padding: '2px 20px',
-                                        }}>{renderedStepList}</div>;
-                                    } else {
-                                        // Render empty div
-                                        return <div style={{
-                                            // width: `${props.value}%`,
-                                            // height: '100%',
-                                            textAlign: 'center',
-                                            // margin: 'auto',
-                                        }}> --- </div>
-                                    }
-                                },
-                            });
-                        });
-		                });
-                });
-                tableConfig.push(configObject);
+                  )}
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "6px",
+                      marginTop: "6px",
+                      justifyContent: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <StatusBadge text={statistics.passed} color={LABEL_COLOR.PASSED_COLOR} />
+                    <StatusBadge text={statistics.known_failed} color={LABEL_COLOR.PASSED_ERRORS_COLOR} />
+                    <StatusBadge text={statistics.failed} color={LABEL_COLOR.FAILED_COLOR} />
+                  </div>
+                </div>
+              ),
+              id: `${flavorKey}-${archKey}-${typeKey}-${nameKey}`,
+              accessor: (row) => {
+                const data = nameData[row.id];
+                if (!data) return null;
+
+                const lastStep = data.steps[data.steps.length - 1];
+                const { status } = lastStep;
+
+                if (status === RELVAL_STATUS_ENUM.PASSED) return getLabelName(status);
+                if (status === RELVAL_STATUS_ENUM.FAILED) return getExitCodeName(data.exitcode);
+                if (status === RELVAL_STATUS_ENUM.DAS_ERROR) return getLabelName(status);
+                if (status === RELVAL_STATUS_ENUM.NOTRUN) return getLabelName(status);
+                if (status === RELVAL_STATUS_ENUM.TIMEOUT) return getLabelName(status);
+                return null;
+              },
+              filter: "text",
+              disableFilters: !doFilterColumn,
+              Filter: (props) =>
+                doFilterColumn ? <ColumnTextFilter {...props} placeholder="Filter column..." /> : null,
+              filterMethod: (rows, id, filterValue) => rows,
+              Cell: ({ row }) => {
+                const data = nameData[row.original.id];
+                if (!data) return <div style={{ textAlign: "center", padding: "4px" }}>—</div>;
+
+                const ib = getIb(ibDate, ibQue, flavorKey);
+                const steps = data.steps;
+                const stepsToShow = row.isExpanded ? steps : [steps[steps.length - 1]];
+
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {stepsToShow.map((step, idx) => {
+                      const stepNumber = steps.length - (row.isExpanded ? steps.length - idx - 1 : 0);
+                      const { status, errors = 0, warnings = 0 } = step;
+
+                      let exitCodeText = null;
+                      if (status === RELVAL_STATUS_ENUM.FAILED) {
+                        exitCodeText = getExitCodeName(data.exitcode);
+                      }
+
+                      return (
+                        <StepCell
+                          key={idx}
+                          stepNumber={stepNumber}
+                          status={status}
+                          exitCode={exitCodeText}
+                          errors={errors}
+                          warnings={warnings}
+                          onClick={() => handleShow(steps, data.name)}
+                          logUrl={getLogAddress(
+                            archKey,
+                            ib,
+                            stepNumber,
+                            data.name,
+                            data.id,
+                            status === RELVAL_STATUS_ENUM.DAS_ERROR,
+                            typeKey,
+                            nameKey
+                          )}
+                        />
+                      );
+                    })}
+                  </div>
+                );
+              },
+            });
+          });
+        });
+      });
+    });
+
+    return cols;
+  }, [
+    structure,
+    selectedArchs,
+    selectedGPUs,
+    selectedOthers,
+    selectedFlavors,
+    doFilterColumn,
+    ibDate,
+    ibQue,
+    archColorScheme,
+    getExitCodeName,
+    handleShow,
+  ]);
+
+  const defaultColumn = useMemo(
+    () => ({
+      Filter: (props) =>
+        doFilterColumn ? <ColumnTextFilter {...props} placeholder="Filter..." /> : null,
+    }),
+    [doFilterColumn]
+  );
+
+  const {
+    getTableProps,
+    getTableBodyProps,
+    headerGroups,
+    prepareRow,
+    page,
+    canPreviousPage,
+    canNextPage,
+    pageOptions,
+    pageCount,
+    gotoPage,
+    nextPage,
+    previousPage,
+    setPageSize,
+    state: { pageIndex, pageSize },
+    visibleColumns,
+  } = useTable(
+    {
+      columns,
+      data: filteredRelVals,
+      defaultColumn,
+      initialState: {
+        expanded: {},
+        pageSize: 100,
+        pageIndex: 0,
+      },
+      autoResetExpanded: false,
+      autoResetFilters: false,
+      filterTypes: {
+        text: (rows, id, filterValue) => {
+          return rows.filter((row) => {
+            const rowValue = row.values[id];
+            return rowValue !== undefined
+              ? String(rowValue).toLowerCase().includes(String(filterValue).toLowerCase())
+              : true;
+          });
+        },
+      },
+    },
+    useFilters,
+    useExpanded,
+    usePagination
+  );
+
+  return (
+    <>
+      {/* Modal */}
+      <Modal show={showModal} onHide={handleClose} size="lg" centered scrollable>
+        <Modal.Header closeButton className="bg-light">
+          <Modal.Title>{modalTitle}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {modalCommands.length > 0 ? (
+            modalCommands.map((cmd, index) => {
+              if (!cmd || Object.keys(cmd).length === 0) {
+                return (
+                  <div key={uuidv4()} className="mb-4">
+                    <div
+                      className="d-flex align-items-center justify-content-between mb-2"
+                      style={styles.stickyHeader}
+                    >
+                      <strong>Step {index + 1}</strong>
+                      <Button variant="outline-secondary" size="sm" disabled>
+                        Loading...
+                      </Button>
+                    </div>
+                    <pre
+                      style={{
+                        backgroundColor: "#f8f9fa",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        color: "#6c757d",
+                        fontStyle: "italic",
+                        fontSize: "0.9rem",
+                      }}
+                    >
+                      Loading command...
+                    </pre>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={uuidv4()} className="mb-4">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <strong>Step {index + 1}</strong>
+                    <CopyToClipboard text={cmd.command || ""} onCopy={() => setCopied(true)}>
+                      <Button variant="outline-primary" size="sm">
+                        Copy to clipboard
+                      </Button>
+                    </CopyToClipboard>
+                  </div>
+                  <pre
+                    style={{
+                      backgroundColor: "#f8f9fa",
+                      padding: "12px",
+                      borderRadius: "8px",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      fontSize: "0.9rem",
+                    }}
+                  >
+                    {cmd.command || "No command available"}
+                  </pre>
+                </div>
+              );
             })
-        }
-        const columns = [
-            {
-                columns: [
-                    {
-                        expander: true,
-                    },
-                    {
-                        // expander: true,
-                        Header: "#",
-                        accessor: "index",
-                        maxWidth: 100,
-                        // filterable: true,
-                        // Cell: props => <b>{props.value}</b>, // shows index in unfiltered list
-                        Cell: props => <b>{props.index + 1}</b>, // Shows index in table
-                    },
-                    {
-                        Header: "Workflow #",
-                        accessor: "id",
-                        maxWidth: 100,
-                        filterable: doFilterColumn,
-                        sortMethod: (a, b) => parseFloat(a) > parseFloat(b) ? 1 : -1,
-                        Cell: (props) => {
-                            const popoverShowCmdName = (
-                                <Popover id={'popover-' + props.original.cmdName}>
-                                    <div style={{overflow: 'auto'}}>
-                                        {props.original.cmdName}
-                                    </div>
-                                </Popover>
-                            );
-                            return (
-                                <OverlayTrigger
-                                    // trigger="click"
-                                    // rootClose
-                                    placement="top"
-                                    overlay={popoverShowCmdName}>
-                                    <b>{props.value}</b>
-                                </OverlayTrigger>
-                            )
-                        }
-                    },
-                ]
-            },
-            ...tableConfig
-        ];
-        return (
-            [modalCmd,
-                <ReactTable
-                    //TODO even if data does not change, it close on every re-render
-                    collapseOnDataChange={false}
-                    data={filteredRelVals}
-                    columns={columns}
-                    defaultPageSize={100}
-                    style={style}
-                    pageSizeOptions= {[20, 50, 100, 500, 1000]}
-                    className={'-striped -highlight'}
-                />
-            ]
-        )
-    }
-}
+          ) : (
+            <div className="text-center text-muted py-3">No commands available</div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleClose}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Table */}
+      <div style={{ ...style, display: "flex", flexDirection: "column" }}>
+        <div style={{ overflow: "auto", flex: 1, position: "relative" }}>
+          <table
+            {...getTableProps()}
+            className="table table-bordered table-sm"
+            style={{ width: "100%", fontSize: UI_SIZES.tableFont }}
+          >
+            <thead>
+              {headerGroups.map((headerGroup) => {
+                const { key, ...headerProps } = headerGroup.getHeaderGroupProps();
+                return (
+                  <React.Fragment key={key}>
+                    <tr {...headerProps}>
+                      {headerGroup.headers.map((column) => {
+                        const { key: colKey, ...colProps } = column.getHeaderProps();
+                        return (
+                          <th
+                            key={colKey}
+                            {...colProps}
+                            className="align-middle text-center"
+                            style={{
+                              padding: "12px 6px",
+                              verticalAlign: "middle",
+                              backgroundColor: "#f5f5f5",
+                              borderBottom: "2px solid #ddd",
+                              fontSize: UI_SIZES.headerFont,
+                              fontWeight: 900,
+                              ...styles.stickyTableHeader,
+                              ...colProps.style,
+                            }}
+                          >
+                            {column.render("Header")}
+                          </th>
+                        );
+                      })}
+                    </tr>
+
+                    {doFilterColumn && (
+                      <tr>
+                        {headerGroup.headers.map((column) => (
+                          <th
+                            key={`filter-${column.id}`}
+                            style={{
+                              backgroundColor: "#f8fafc",
+                              padding: "8px 6px",
+                              borderBottom: "1px solid #ddd",
+                              verticalAlign: "top",
+                            }}
+                          >
+                            {column.canFilter ? column.render("Filter") : null}
+                          </th>
+                        ))}
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </thead>
+
+            <tbody {...getTableBodyProps()}>
+              {page.map((row) => {
+                prepareRow(row);
+                const { key, ...rowProps } = row.getRowProps();
+                return (
+                  <tr key={key} {...rowProps}>
+                    {row.cells.map((cell) => {
+                      const { key: cellKey, ...cellProps } = cell.getCellProps();
+                      return (
+                        <td
+                          key={cellKey}
+                          {...cellProps}
+                          className="align-middle"
+                          style={{
+                            padding: "8px 6px",
+                            fontSize: UI_SIZES.tableFont,
+                            ...cellProps.style,
+                          }}
+                        >
+                          {cell.render("Cell")}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+
+              {page.length === 0 && (
+                <tr>
+                  <td colSpan={visibleColumns.length} className="text-center text-muted py-5">
+                    <div className="d-flex flex-column align-items-center">
+                      <span style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>🔍 No matching RelVals found</span>
+                      <span className="text-muted" style={{ fontSize: "0.95rem" }}>
+                        Try adjusting your filters
+                      </span>
+                      <div className="mt-3 text-left" style={{ maxWidth: "520px" }}>
+                        {/* <strong>Selected filters:</strong>
+                        <pre className="mt-2 p-3 bg-light" style={{ fontSize: "0.9rem", borderRadius: 10 }}>
+                          {JSON.stringify(
+                            {
+                              selectedArchs,
+                              selectedGPUs,
+                              selectedOthers,
+                              selectedFlavors,
+                              selectedFilterStatus,
+                            },
+                            null,
+                            2
+                          )}
+                        </pre> */}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Controls */}
+        {filteredRelVals.length > 0 && (
+          <Pagination
+            canPreviousPage={canPreviousPage}
+            canNextPage={canNextPage}
+            pageOptions={pageOptions}
+            pageCount={pageCount}
+            gotoPage={gotoPage}
+            nextPage={nextPage}
+            previousPage={previousPage}
+            setPageSize={setPageSize}
+            pageIndex={pageIndex}
+            pageSize={pageSize}
+            pageSizeOptions={[20, 50, 100, 500, 1000]}
+          />
+        )}
+      </div>
+    </>
+  );
+};
+
+ResultTableWithSteps.propTypes = {
+  filteredRelVals: PropTypes.array,
+  selectedArchs: PropTypes.array,
+  selectedGPUs: PropTypes.array,
+  selectedOthers: PropTypes.array,
+  selectedFlavors: PropTypes.array,
+  selectedFilterStatus: PropTypes.array,
+  structure: PropTypes.object,
+  ibDate: PropTypes.string,
+  ibQue: PropTypes.string,
+  style: PropTypes.object,
+  allGPUs: PropTypes.array,
+  allArchs: PropTypes.array,
+  allOthers: PropTypes.array,
+  allFlavors: PropTypes.array,
+};
 
 export default ResultTableWithSteps;

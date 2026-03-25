@@ -43,19 +43,29 @@ export function ExitCodeProvider({ children }) {
 
   // Fetch exit codes once on mount
   useEffect(() => {
+    console.log(" Loading exit codes from:", urls.exitcodes);
+    
     getMultipleFiles({
       fileUrlList: [urls.exitcodes],
       onSuccessCallback: function (responseList) {
+        console.log(" Exit codes response:", responseList);
         const exitCodes = responseList[0]?.data || {};
         dispatch({ type: ExitCodeActionTypes.SET_EXIT_CODES, payload: exitCodes });
       },
+      onErrorCallback: function (error) {
+        console.error("❌ Failed to load exit codes:", error);
+      }
     });
   }, []);
 
   // Method to get exit code name
   const getExitCodeName = (exitCode) => {
-    if (exitCode === 0) return "Passed";
-    return state.exitCodes[exitCode] || exitCode;
+    if (exitCode === 0 || exitCode === "0") return "Passed";
+    if (!exitCode && exitCode !== 0) return "Unknown";
+    
+    // Handle both string and number keys
+    const codeStr = String(exitCode);
+    return state.exitCodes[codeStr] || state.exitCodes[exitCode] || `Error ${exitCode}`;
   };
 
   return (
@@ -69,5 +79,17 @@ export function ExitCodeProvider({ children }) {
 // Custom Hook
 // -----------------------------
 export function useExitCode() {
-  return useContext(ExitCodeContext);
+  const context = useContext(ExitCodeContext);
+  if (!context) {
+    console.error("❌ useExitCode must be used within an ExitCodeProvider");
+    // Return dummy implementation to prevent crashes
+    return {
+      state: { exitCodes: {} },
+      getExitCodeName: (code) => {
+        if (code === 0) return "Passed";
+        return `Error ${code}`;
+      }
+    };
+  }
+  return context;
 }

@@ -1,217 +1,371 @@
-import React, {Component} from 'react';
-import RelValNavigation from "./RelValComponents/RelValNavigation";
-import RelValStore from "../Stores/RelValStore";
-import ExitCodeStore from "../Stores/ExitCodeStore";
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import queryString from 'query-string';
+
+import RelValNavigation from "./RelValComponents/RelValNavigation";
 import TogglesShowRow from "./TogglesShowRow";
-import {goToLinkWithoutHistoryUpdate, partiallyUpdateLocationQuery} from "../Utils/commons";
-import 'react-table/react-table.css';
 import ResultTableWithSteps from "./RelValComponents/ResultTableWithSteps";
-import {filterRelValStructure} from "../Utils/processing";
-import {STATUS_ENUM, STATUS_ENUM_LIST} from "../relValConfig";
+import { useRelVal } from "../Stores/RelValStore";
+import { filterRelValStructure } from "../Utils/processing";
+import { goToLinkWithoutHistoryUpdate, partiallyUpdateLocationQuery } from "../Utils/commons";
+import { STATUS_ENUM, STATUS_ENUM_LIST } from "../relValConfig";
 
 const NAV_CONTROLS_ENUM = {
-    SELECTED_ARCHS: "selectedArchs",
-    SELECTED_FLAVORS: "selectedFlavors",
-    SELECTED_STATUS: "selectedStatus",
-    SELECTED_GPUS: "selectedGPUs",
-    SELECTED_OTHERS: "selectedOthers",
-    SELECTED_FILTER_STATUS: "selectedFilterStatus"
+  SELECTED_ARCHS: "selectedArchs",
+  SELECTED_FLAVORS: "selectedFlavors",
+  SELECTED_STATUS: "selectedStatus",
+  SELECTED_GPUS: "selectedGPUs",
+  SELECTED_OTHERS: "selectedOthers",
+  SELECTED_FILTER_STATUS: "selectedFilterStatus"
 };
 
-// Smart component tracking data change and laying basic layout
-class RelValLayout extends Component {
-    constructor(props) {
-        super(props);
-        this.doUpdateData = this.doUpdateData.bind(this);
-        this.state = {
-            navigationHeight: 0,
-        };
-        this.handleNavHeightChange = this.handleNavHeightChange.bind(this);
-    }
+// ----- Helpers to preserve React16 query parsing behavior -----
+function normalizeSingleOrEmpty(val) {
+  // React16 behavior:
+  // - if missing => ""
+  // - if array => remove "", then:
+  //     len 0 => ""
+  //     len 1 => string
+  //     len >1 => array (can happen)
+  // - if string => string
+  if (val == null) return "";
+  if (typeof val === "string") return val;
 
-    handleNavHeightChange(height) {
-        if (this.state.navigationHeight !== height) {
-            this.setState({ navigationHeight: height });
-        }
-    }
+  if (Array.isArray(val)) {
+    const filtered = val.filter((x) => x !== "");
+    if (filtered.length === 0) return "";
+    if (filtered.length === 1) return filtered[0];
+    return filtered;
+  }
 
-    componentWillMount() {
-        RelValStore.on("change", this.doUpdateData);
-        ExitCodeStore.on("change", this.forceUpdate);
-    }
-
-    doUpdateData() {
-        const {date, que} = this.props.match.params;
-        const allArchs = RelValStore.getAllArchsForQue({date, que});
-        const allGPUs = RelValStore.getAllGPUsForQue({date, que});
-        const allOthers = RelValStore.getAllOthersForQue({date, que});
-        const allFlavors = RelValStore.getAllFlavorsForQue({date, que});
-        const structure = RelValStore.getFlavorStructure({date, que});
-        this.setState({structure, allArchs, allGPUs, allOthers, allFlavors, date, que});
-
-        const {location, history} = this.props;
-        if (location.search === "") {
-            partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_ARCHS, allArchs);
-            partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_GPUS, allGPUs);
-            partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_OTHERS, allOthers);
-            partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_FLAVORS, allFlavors);
-            partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_STATUS, [STATUS_ENUM.FAILED]);
-            goToLinkWithoutHistoryUpdate(history, location);
-        }
-
-    }
-
-    componentWillReceiveProps(newProps) {
-        const {date, que} = newProps.match.params;
-        const oldDate = this.props.match.params.date;
-        const oldQue = this.props.match.params.que;
-        if (date !== oldDate || que !== oldQue) {
-            const allArchs = RelValStore.getAllArchsForQue({date, que});
-            const allGPUs = RelValStore.getAllGPUsForQue({date, que});
-            const allOthers = RelValStore.getAllOthersForQue({date, que});
-            const allFlavors = RelValStore.getAllFlavorsForQue({date, que});
-            const structure = RelValStore.getFlavorStructure({date, que});
-            this.setState({structure, allArchs, allGPUs, allOthers, allFlavors, date, que});
-
-            const {location, history} = newProps;
-            partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_ARCHS, allArchs);
-            partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_GPUS, allGPUs);
-            partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_OTHERS, allOthers);
-            partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_FLAVORS, allFlavors);
-            goToLinkWithoutHistoryUpdate(history, location);
-        }
-    }
-
-    getNavigationHeight() {
-        const navigationHeight = document.getElementById('navigation').clientHeight;
-        this.setState({navigationHeight});
-    }
-
-    componentDidMount() {
-        window.addEventListener('resize', this.getNavigationHeight.bind(this));
-        this.doUpdateData();
-        this.getNavigationHeight();
-    }
-
-    componentWillUnmount() {
-        RelValStore.removeListener("change", this.doUpdateData);
-        ExitCodeStore.removeListener("change", this.forceUpdate);
-        window.removeEventListener('resize', this.getNavigationHeight.bind(this));
-    }
-
-    getTopPadding() {
-        return this.state.navigationHeight;
-    }
-
-    getSizeForTable() {
-        return document.documentElement.clientHeight - this.getTopPadding();
-    }
-
-    render() {
-        const {allArchs = [], allGPUs = [], allOthers = [], allFlavors = []} = this.state;
-        let {selectedArchs, selectedGPUs, selectedOthers, selectedFlavors, selectedStatus, selectedFilterStatus} = queryString.parse(this.props.location.search);
-        const {structure = {}} = this.state;
-        const {date, que} = this.props.match.params;
-        const {location, history} = this.props;
-        if (!selectedGPUs){selectedGPUs="";}
-        if (!selectedOthers){selectedOthers="";}
-        if (typeof selectedGPUs !== 'string') {
-            selectedGPUs = selectedGPUs.filter(item => item !== "");
-            if (selectedGPUs.length === 0){selectedGPUs = "";}
-            else if (selectedGPUs.length === 1){selectedGPUs = selectedGPUs[0];}
-        }
-        if (typeof selectedOthers !== 'string') {
-          selectedOthers = selectedOthers.filter(item => item !== "");
-          if (selectedOthers.length === 0){selectedOthers = "";}
-          else if (selectedOthers.length === 1){selectedOthers = selectedOthers[0];}
-        }
-        const controlList = [
-            <TogglesShowRow
-                rowName={'Flavors'}
-                nameList={allFlavors}
-                initSelections={selectedFlavors}
-                callbackToParent={(v) => {
-                    partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_FLAVORS, v);
-                    goToLinkWithoutHistoryUpdate(history, location);
-                }}/>,
-            <TogglesShowRow
-                rowName={'Architectures'}
-                nameList={allArchs}
-                initSelections={selectedArchs}
-                callbackToParent={(v) => {
-                    partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_ARCHS, v);
-                    goToLinkWithoutHistoryUpdate(history, location);
-                }}/>,
-            (allGPUs.length > 0) && <TogglesShowRow
-                rowName={'GPUs'}
-                nameList={allGPUs}
-                initSelections={selectedGPUs}
-                callbackToParent={(v) => {
-                    partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_GPUS, v);
-                    goToLinkWithoutHistoryUpdate(history, location);
-                }}/>,
-            (allOthers.length > 0) && <TogglesShowRow
-                rowName={'Others'}
-                nameList={allOthers}
-                initSelections={selectedOthers}
-                callbackToParent={(v) => {
-                    partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_OTHERS, v);
-                    goToLinkWithoutHistoryUpdate(history, location);
-                }}/>,
-            [
-                <TogglesShowRow
-                    rowName={'Status'}
-                    nameList={STATUS_ENUM_LIST}
-                    initSelections={selectedStatus}
-                    callbackToParent={(v) => {
-                        partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_STATUS, v);
-                        goToLinkWithoutHistoryUpdate(history, location);
-                    }}/>,
-                <TogglesShowRow
-                    rowName={' Column filter'}
-                    nameList={['On']}
-                    initSelections={selectedFilterStatus}
-                    callbackToParent={(v) => {
-                        
-                        partiallyUpdateLocationQuery(location, NAV_CONTROLS_ENUM.SELECTED_FILTER_STATUS, v);
-                        goToLinkWithoutHistoryUpdate(history, location);
-                    }}/>
-            ]
-        ].filter(Boolean);
-
-        const resultTableWithStepsSettings = {
-            style: {height: this.getSizeForTable()},
-            allArchs,
-            allGPUs,
-            allOthers,
-            allFlavors,
-            selectedArchs,
-            selectedGPUs,
-            selectedOthers,
-            selectedFlavors,
-            selectedStatus,
-            structure,
-            selectedFilterStatus,
-            ibDate: date,
-            ibQue: que,
-            filteredRelVals: filterRelValStructure({structure, selectedArchs, selectedGPUs, selectedOthers, selectedFlavors, selectedStatus})
-        };
-
-        return (
-            <div className={'container'} style={{paddingTop: this.getTopPadding()}}>
-                <RelValNavigation
-                    que={que}
-                    relvalInfo={que + " " + date}
-                    controlList={controlList} history={history}
-                    onHeightChange={this.handleNavHeightChange}
-                />
-                <ResultTableWithSteps
-                    {...resultTableWithStepsSettings}
-                />
-            </div>
-        );
-    }
+  return "";
 }
+
+function normalizeMaybeArray(val) {
+  // For archs/flavors/status/filterStatus React16 accepted string or array.
+  // We keep what query-string returns (string|array|undefined), but normalize undefined to [] for TogglesShowRow.
+  if (val == null) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === "string") return [val];
+  return [];
+}
+
+const RelValLayout = () => {
+  const params = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [navigationHeight, setNavigationHeight] = useState(0);
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  const { state, fetchQueData, isLoading } = useRelVal();
+
+  // Extract data for current queue
+  const queData = state?.structure?.[params?.date]?.[params?.que] || {};
+  const allArchs = queData?.allArchs || [];
+  const allGPUs = queData?.allGPUs || [];
+  const allOthers = queData?.allOthers || [];
+  const allFlavors = queData?.flavors ? Object.keys(queData.flavors).sort().reverse() : [];
+
+  // -----------------------------
+  // Fetch data when params change
+  // -----------------------------
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadData = async () => {
+      setDataLoaded(false);
+      if (params?.date && params?.que) {
+        await fetchQueData({ date: params.date, que: params.que });
+        if (!cancelled) setDataLoaded(true);
+      }
+    };
+
+    loadData();
+    return () => { cancelled = true; };
+  }, [params?.date, params?.que, fetchQueData]);
+
+  // -----------------------------
+  // Parse query params 
+  // -----------------------------
+  const parsedQuery = useMemo(() => queryString.parse(location.search), [location.search]);
+
+  let selectedArchs = useMemo(
+    () => normalizeMaybeArray(parsedQuery[NAV_CONTROLS_ENUM.SELECTED_ARCHS]),
+    [parsedQuery]
+  );
+
+  let selectedFlavors = useMemo(
+    () => normalizeMaybeArray(parsedQuery[NAV_CONTROLS_ENUM.SELECTED_FLAVORS]),
+    [parsedQuery]
+  );
+
+  let selectedStatus = useMemo(
+    () => normalizeMaybeArray(parsedQuery[NAV_CONTROLS_ENUM.SELECTED_STATUS]),
+    [parsedQuery]
+  );
+
+  let selectedFilterStatus = useMemo(
+    () => normalizeMaybeArray(parsedQuery[NAV_CONTROLS_ENUM.SELECTED_FILTER_STATUS]),
+    [parsedQuery]
+  );
+
+  // special handling for GPUs/Others
+  let selectedGPUs = useMemo(
+    () => normalizeSingleOrEmpty(parsedQuery[NAV_CONTROLS_ENUM.SELECTED_GPUS]),
+    [parsedQuery]
+  );
+
+  let selectedOthers = useMemo(
+    () => normalizeSingleOrEmpty(parsedQuery[NAV_CONTROLS_ENUM.SELECTED_OTHERS]),
+    [parsedQuery]
+  );
+
+  // -----------------------------
+  // behavior: if URL has no query, set defaults
+  // Only do this once data is available.
+  // -----------------------------
+  useEffect(() => {
+    if (!params?.date || !params?.que) return;
+    if (!queData || Object.keys(queData).length === 0) return;
+
+    // did this when location.search === ""
+    if (location.search === "") {
+      const newLoc = { ...location }; // partiallyUpdateLocationQuery mutates
+      partiallyUpdateLocationQuery(newLoc, NAV_CONTROLS_ENUM.SELECTED_ARCHS, allArchs);
+      partiallyUpdateLocationQuery(newLoc, NAV_CONTROLS_ENUM.SELECTED_GPUS, allGPUs);
+      partiallyUpdateLocationQuery(newLoc, NAV_CONTROLS_ENUM.SELECTED_OTHERS, allOthers);
+      partiallyUpdateLocationQuery(newLoc, NAV_CONTROLS_ENUM.SELECTED_FLAVORS, allFlavors);
+      partiallyUpdateLocationQuery(newLoc, NAV_CONTROLS_ENUM.SELECTED_STATUS, [STATUS_ENUM.FAILED]);
+
+      goToLinkWithoutHistoryUpdate(
+        navigate,
+        newLoc.pathname + (newLoc.search ? `?${newLoc.search}` : "")
+      );
+    }
+  }, [
+    location,
+    navigate,
+    params?.date,
+    params?.que,
+    queData,
+    allArchs,
+    allGPUs,
+    allOthers,
+    allFlavors
+  ]);
+
+  // -----------------------------
+  // Update URL helper 
+  // -----------------------------
+  const updateUrlParam = useCallback((param, values) => {
+    const newLocation = partiallyUpdateLocationQuery(location, param, values);
+    goToLinkWithoutHistoryUpdate(
+      navigate,
+      newLocation.pathname + (newLocation.search ? `?${newLocation.search}` : "")
+    );
+  }, [location, navigate]);
+
+  // -----------------------------
+  // Controls 
+  // -----------------------------
+  const controlList = useMemo(() => ([
+    <TogglesShowRow
+      key="flavors"
+      rowName="Flavors"
+      nameList={allFlavors}
+      initSelections={selectedFlavors}
+      callbackToParent={(v) => updateUrlParam(NAV_CONTROLS_ENUM.SELECTED_FLAVORS, v)}
+    />,
+    <TogglesShowRow
+      key="archs"
+      rowName="Architectures"
+      nameList={allArchs}
+      initSelections={selectedArchs}
+      callbackToParent={(v) => updateUrlParam(NAV_CONTROLS_ENUM.SELECTED_ARCHS, v)}
+    />,
+    allGPUs.length > 0 && (
+      <TogglesShowRow
+        key="gpus"
+        rowName="GPUs"
+        nameList={allGPUs}
+        initSelections={selectedGPUs}
+        callbackToParent={(v) => updateUrlParam(NAV_CONTROLS_ENUM.SELECTED_GPUS, v)}
+      />
+    ),
+    allOthers.length > 0 && (
+      <TogglesShowRow
+        key="others"
+        rowName="Others"
+        nameList={allOthers}
+        initSelections={selectedOthers}
+        callbackToParent={(v) => updateUrlParam(NAV_CONTROLS_ENUM.SELECTED_OTHERS, v)}
+      />
+    ),
+    <TogglesShowRow
+      key="status"
+      rowName="Status"
+      nameList={STATUS_ENUM_LIST}
+      initSelections={selectedStatus}
+      callbackToParent={(v) => updateUrlParam(NAV_CONTROLS_ENUM.SELECTED_STATUS, v)}
+    />,
+    <TogglesShowRow
+      key="filter"
+      rowName="Column filters"
+      nameList={['On']}
+      initSelections={selectedFilterStatus}
+      callbackToParent={(v) => updateUrlParam(NAV_CONTROLS_ENUM.SELECTED_FILTER_STATUS, v)}
+    />
+  ].filter(Boolean)), [
+    allFlavors,
+    allArchs,
+    allGPUs,
+    allOthers,
+    selectedFlavors,
+    selectedArchs,
+    selectedGPUs,
+    selectedOthers,
+    selectedStatus,
+    selectedFilterStatus,
+    updateUrlParam
+  ]);
+
+  // -----------------------------
+  // Filter RelVals 
+  // -----------------------------
+  const filteredData = useMemo(() => {
+    if (!queData || Object.keys(queData).length === 0) return [];
+
+    return filterRelValStructure({
+      structure: queData,
+      selectedArchs,
+      selectedGPUs,
+      selectedOthers,
+      selectedFlavors,
+      selectedStatus
+    });
+  }, [queData, selectedArchs, selectedGPUs, selectedOthers, selectedFlavors, selectedStatus]);
+
+  // -----------------------------
+  // Navigation height
+  // -----------------------------
+  const getNavigationHeight = useCallback(() => {
+    const nav = document.getElementById('relval-navigation');
+    if (nav) setNavigationHeight(nav.clientHeight);
+  }, []);
+
+  useEffect(() => {
+    setTimeout(getNavigationHeight, 100);
+    window.addEventListener('resize', getNavigationHeight);
+    return () => window.removeEventListener('resize', getNavigationHeight);
+  }, [getNavigationHeight, dataLoaded]);
+
+  const getTopPadding = () => navigationHeight + 20;
+  const getSizeForTable = () => document.documentElement.clientHeight - getTopPadding() - 20;
+
+  // Result table props
+  const resultTableWithStepsSettings = useMemo(() => ({
+    style: { height: getSizeForTable(), overflow: 'auto' },
+    allArchs,
+    allGPUs,
+    allOthers,
+    allFlavors,
+    selectedArchs,
+    selectedGPUs,
+    selectedOthers,
+    selectedFlavors,
+    selectedStatus,
+    structure: queData,
+    selectedFilterStatus,
+    ibDate: params.date,
+    ibQue: params.que,
+    filteredRelVals: filteredData
+  }), [
+    allArchs,
+    allGPUs,
+    allOthers,
+    allFlavors,
+    selectedArchs,
+    selectedGPUs,
+    selectedOthers,
+    selectedFlavors,
+    selectedStatus,
+    queData,
+    selectedFilterStatus,
+    params.date,
+    params.que,
+    filteredData
+  ]);
+
+  // Loading state
+  if (isLoading && !dataLoaded) {
+    return (
+      <div style={{
+        paddingTop: getTopPadding(),
+        paddingLeft: 0,
+        paddingRight: 0,
+        paddingBottom: 50,
+        textAlign: 'center'
+      }}>
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <p style={{ marginTop: 20 }}>Loading RelVal data...</p>
+      </div>
+    );
+  }
+
+  // No data state
+  if (!queData || Object.keys(queData).length === 0) {
+    return (
+      <div style={{
+        paddingTop: getTopPadding(),
+        paddingLeft: 0,
+        paddingRight: 0,
+        paddingBottom: 50,
+        textAlign: 'center'
+      }}>
+        <h3>No data available</h3>
+        <p>Could not load data for {params.que} on {params.date}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      paddingTop: getTopPadding(),
+      paddingLeft: 0,
+      paddingRight: 0,
+      paddingBottom: 20,
+      width: '100%'
+    }}>
+      <RelValNavigation
+        id="relval-navigation"
+        que={params.que}
+        relvalInfo={`${params.que} ${params.date}`}
+        controlList={controlList}
+        onHeightChange={setNavigationHeight}
+      />
+
+      {filteredData.length > 0 ? (
+        <ResultTableWithSteps {...resultTableWithStepsSettings} />
+      ) : (
+        <div style={{
+          textAlign: 'center',
+          paddingTop: 40,
+          paddingBottom: 40,
+          paddingLeft: 20,
+          paddingRight: 20,
+          background: '#f8f9fa',
+          margin: '20px',
+          borderRadius: '8px'
+        }}>
+          <h5>No matching information found</h5>
+          <p>Try adjusting your filters</p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default RelValLayout;

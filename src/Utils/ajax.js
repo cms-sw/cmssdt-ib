@@ -1,4 +1,4 @@
-import * as axios from "axios";
+import axios from "axios";
 import wrapper from 'axios-cache-plugin';
 
 let httpWrapper = wrapper(axios, {

@@ -1,224 +1,391 @@
-import React, {Component} from 'react';
-import { config, STATUS_ENUM } from '../../config';
-import uuid from 'uuid';
-import MenuItem from "react-bootstrap/es/MenuItem";
-import {Dropdown, Glyphicon} from "react-bootstrap";
-import {getCurrentIbTag, getDisplayName} from "../../Utils/processing";
-import {UnitTestsLabel} from './UnitTestsLabel';
-import {RelvalsLabel} from './RelvalsLabel';
+import React, { Component } from "react";
+import PropTypes from "prop-types";
+import { config, STATUS_ENUM } from "../../config";
+import { v4 as uuidv4 } from "uuid";
+import { Dropdown } from "react-bootstrap";
+import {
+  FaTag,
+  FaList,
+  FaSyncAlt,
+  FaCheck,
+  FaExclamationTriangle,
+  FaTimes,
+  FaGithub,
+  FaCodeBranch,
+  FaBox
+} from "react-icons/fa";
+import { getCurrentIbTag, getDisplayName } from "../../Utils/processing";
+import { UnitTestsLabel } from "./UnitTestsLabel";
+import { RelvalsLabel } from "./RelvalsLabel";
 
-const {statusLabelsConfigs} = config;
+const { statusLabelsConfigs } = config;
+
+const ICON_MAP = {
+  tag: <FaTag />,
+  list: <FaList />,
+  refresh: <FaSyncAlt className="fa-spin" />,
+  success: <FaCheck />,
+  warning: <FaExclamationTriangle />,
+  error: <FaTimes />,
+  github: <FaGithub />,
+  branch: <FaCodeBranch />,
+  release: <FaBox />
+};
+
+const COLOR_SCHEME = {
+  primary: { bg: "#e9ecef", text: "#495057", border: "#dee2e6" },      // Light gray
+  secondary: { bg: "#f1f3f5", text: "#495057", border: "#e9ecef" },    // Very light gray
+  success: { bg: "#e6f7e6", text: "#2c6e2c", border: "#b7e0b7" },      // Soft green
+
+ 
+  danger: { bg: "#f8d7da", text: "#842029", border: "#f5c2c7" },       // Soft red (more visible)
+
+  
+  warning: { bg: "#fff3cd", text: "#664d03", border: "#ffecb5" },      // Soft yellow
+  info: { bg: "#d1ecf1", text: "#0c5460", border: "#bee5eb" },         // Soft blue
+  light: { bg: "#ffffff", text: "#6c757d", border: "#f8f9fa" },        // White
+  dark: { bg: "#e9ecef", text: "#343a40", border: "#dee2e6" },         // Light gray
+  outline: { bg: "#ffffff", text: "#6c757d", border: "#dee2e6" }       // Outline style
+};
 
 class StatusLabels extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      IBGroup: props.IBGroup || [],
+      ib: props.IBGroup?.[0] || null,
+      ibGroupType: props.ibGroupType || "IB",
+      showOnlyIbTag: props.showOnlyIbTag || false
+    };
+  }
 
-    constructor(props) {
-        super(props);
-        this.state = {
-            IBGroup: props.IBGroup,
-            ib: props.IBGroup[0],
-            ibGroupType: props.ibGroupType,
-            showOnlyIbTag: props.showOnlyIbTag
-        }
+  static getDerivedStateFromProps(nextProps, prevState) {
+    if (nextProps.IBGroup !== prevState.IBGroup) {
+      return {
+        IBGroup: nextProps.IBGroup || [],
+        ib: nextProps.IBGroup?.[0] || null,
+        ibGroupType: nextProps.ibGroupType || "IB",
+        showOnlyIbTag: nextProps.showOnlyIbTag || false
+      };
     }
+    return null;
+  }
 
-    static formatLabel({glyphicon, name, url, labelColor, target, rel}) {
-        if (url) {
-            return (
-                <a href={url} key={uuid.v4()} style={{background:labelColor}} target={target} rel={rel}>
-                    <span key={uuid.v4()} className={`glyphicon ${glyphicon}`}/>
-                    <span key={uuid.v4()} > {name} </span>
-                </a>
-            )
-        } else {
-            return [
-                <span key={uuid.v4()} className={`glyphicon ${glyphicon}`}/>,
-                <span key={uuid.v4()} style={{background:labelColor}}> {name} </span>
-            ]
-        }
+  static resolveColors(variant, labelColor) {
+    const base = COLOR_SCHEME[variant] || COLOR_SCHEME.secondary;
+    if (labelColor === "red") return COLOR_SCHEME.danger;
+    if (labelColor === "orange") return COLOR_SCHEME.warning;
+    return base;
+  }
+
+  static formatLabel({ icon, name, url, labelColor, variant = "secondary", tooltip }) {
+    const colors = StatusLabels.resolveColors(variant, labelColor);
+
+    const content = (
+      <>
+        {icon && <span className="me-1" style={{ color: colors.text }}>{icon}</span>}
+        <span style={{ color: colors.text }}>{name}</span>
+      </>
+    );
+
+    const baseStyle = {
+      backgroundColor: colors.bg,
+      color: colors.text,
+      fontSize: "0.85rem",
+      fontWeight: "400",
+      padding: "4px 10px",
+      borderRadius: "4px",
+      border: `1px solid ${colors.border}`,
+      display: "inline-flex",
+      alignItems: "center",
+      boxShadow: "none",
+      transition: "none",
+      ...(tooltip ? { cursor: "help" } : {})
     };
 
-    static defaultFound(config, ib, result) {
-        return {
+    const hoverStyle = url
+      ? {
+          textDecoration: "none",
+          ...(labelColor ? {} : { backgroundColor: "#f8f9fa" })
+        }
+      : {};
+
+    if (url) {
+      return (
+        <a
+          key={uuidv4()}
+          href={url}
+          className="me-1"
+          style={{ ...baseStyle, ...hoverStyle }}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={tooltip}
+        >
+          {content}
+        </a>
+      );
+    }
+
+    return (
+      <span key={uuidv4()} className="me-1" style={baseStyle} title={tooltip}>
+        {content}
+      </span>
+    );
+  }
+
+  static defaultFound(config, ib, result) {
+    return {
+      name: config.name,
+      icon: ICON_MAP.list,
+      url: config.getUrl ? config.getUrl(ib, result) : undefined,
+      variant: "success",
+      tooltip: "Found and ready"
+    };
+  }
+
+  static defaultInProgress(config) {
+    return {
+      name: config.name,
+      icon: ICON_MAP.refresh,
+      variant: "info",
+      tooltip: "In progress..."
+    };
+  }
+
+  static defaultError(config) {
+    return {
+      name: config.name,
+      icon: ICON_MAP.error,
+      variant: "danger",
+      tooltip: "Error occurred"
+    };
+  }
+
+  static renderLabel(config, ib) {
+    if (!ib) return null;
+
+    let status;
+    const result = ib[config.key];
+
+    if (Array.isArray(result)) {
+      status = result;
+    } else if (typeof result === "object" && result !== null) {
+      status = result.status;
+    } else {
+      status = result;
+    }
+
+    if (config.customResultInterpretation) {
+      status = config.customResultInterpretation(status);
+    }
+
+    let outputConfig;
+
+    if ([STATUS_ENUM.found, STATUS_ENUM.passed].includes(status)) {
+      outputConfig = config.ifFound
+        ? config.ifFound(ib, result)
+        : StatusLabels.defaultFound(config, ib, result);
+    } else if ([STATUS_ENUM.inprogress, STATUS_ENUM.inProgress].includes(status)) {
+      outputConfig = config.ifInProgress
+        ? config.ifInProgress(ib, result)
+        : StatusLabels.defaultInProgress(config);
+    } else if (status === STATUS_ENUM.error) {
+      outputConfig = config.ifError
+        ? config.ifError(ib, result)
+        : StatusLabels.defaultError(config);
+    } else if (status === STATUS_ENUM.warning) {
+      outputConfig = config.ifWarning
+        ? config.ifWarning(ib, result)
+        : {
             name: config.name,
-            glyphicon: config.glyphicon ? config.glyphicon : "glyphicon-list-alt",
-            url: config.getUrl ? config.getUrl(ib, result) : undefined,
-            target: config.target,
-            rel: config.rel
-        }
-    };
-
-    static defaultInProgress(config) {
-        return {
-            glyphicon: "glyphicon-refresh",
-            name: config.name
-        }
-    };
-
-    static renderLabel(config, ib) {
-        /**
-         * reads each element in config.statusLabelsConfigs array
-         * applies config and renders it
-         */
-        let status;
-        const {key} = config;
-        const result = ib[key];
-        if (result !== null && Array.isArray(result)){
-            status = result  // give all array to check
-        } else if (result !== null && typeof result === 'object') {
-            status = result.status;  // just get status of the object element
-        }  else {
-            status = result; // the value is a string
-        }
-        // if result variable does not follow standard and needs custom interpretation
-        if (config.customResultInterpretation) {
-            status = config.customResultInterpretation(status);
-        }
-        let outputConfig;
-        if (status === STATUS_ENUM.found || status === STATUS_ENUM.passed) {
-            // if the result has information to create more label, do the following logic
-            if (result.iterable) {
-                let count = 1;
-                let configSeperatedByIterable = result.iterable.map(item => {
-                    let newConfig = Object.assign({}, config);
-                    newConfig.iterateItem = item;
-                    newConfig.name = config.name + " " + count;
-                    count += 1;
-                    return newConfig;
-                });
-                return configSeperatedByIterable.map((config) => {
-                    let outputConfig = config.ifFound ? config.ifFound(ib, result) : StatusLabels.defaultFound(config, ib, result);
-                    return StatusLabels.formatLabel(outputConfig);
-                })
-            } else {
-                // create default labels
-                outputConfig = config.ifFound ? config.ifFound(ib, result) : StatusLabels.defaultFound(config, ib, result);
-            }
-        } else if (status === STATUS_ENUM.not_found) {
-            // by default, do not show the label
-            outputConfig = config.ifNotFound ? config.ifNotFound(ib, result) : undefined;
-        } else if (status === STATUS_ENUM.inprogress || status === STATUS_ENUM.inProgress) {
-            outputConfig = config.ifInProgress ? config.ifInProgress(ib, result) : StatusLabels.defaultInProgress(config);
-        } else if (status === STATUS_ENUM.error) {
-            outputConfig = config.ifError ? config.ifError(ib, result) : StatusLabels.defaultInProgress(config);
-        }
-        else if (status === STATUS_ENUM.warning) {
-            outputConfig = config.ifWarning ? config.ifWarning(ib, result) : StatusLabels.defaultInProgress(config);
-        }
-        else if (status === STATUS_ENUM.success) {
-            outputConfig = config.ifSuccess ? config.ifSuccess(ib, result) : StatusLabels.defaultInProgress(config);
-        }
-        // only if the config object exist, create label
-        if (outputConfig) {
-            return StatusLabels.formatLabel(outputConfig);
-        }
+            icon: ICON_MAP.warning,
+            variant: "warning",
+            tooltip: "Warning: check details"
+          };
+    } else if (status === STATUS_ENUM.success) {
+      outputConfig = config.ifSuccess
+        ? config.ifSuccess(ib, result)
+        : {
+            name: config.name,
+            icon: ICON_MAP.success,
+            variant: "success",
+            tooltip: "Successfully completed"
+          };
     }
 
-    static renderIBTag(IBGroup, ibGroupType) {
-        /**
-         * non-standard function to show IB tag
-         */
-        let config = {};
-        switch (ibGroupType) {
-            case 'IB':
-                config = {
-                    name: "IB Tag",
-                    glyphicon: "tag",
-                    url: 'https://github.com/cms-sw/cmssw/tree/'
-                };
-                break;
-            case 'nextIB':
-                config = {
-                    name: "See Branch",
-                    glyphicon: "list",
-                    url: 'https://github.com/cms-sw/cmssw/commits/'
-                };
-                break;
-            case 'fullBuild':
-                config = {
-                    name: "Release",
-                    glyphicon: "tag",
-                    url: 'https://github.com/cms-sw/cmssw/releases/tag/'
-                };
-                break;
-            default:
-                console.error("wrong case: " + ibGroupType) ;
-        }
+    return outputConfig ? StatusLabels.formatLabel(outputConfig) : null;
+  }
 
-        if (IBGroup.length > 1) {
-            return ([
-                <Dropdown key={uuid.v4()} id="dropdown-custom-1" bsSize="small">
-                    <Dropdown.Toggle>
-                        <Glyphicon glyph={config.glyphicon}/>
-                        {" " + config.name}
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu className="super-colors">
-                        {IBGroup.map((ib) => {
-                            return <MenuItem  key={uuid.v4()}
-                                href={config.url + getCurrentIbTag(ib)}>{getDisplayName(ib.release_queue)}</MenuItem>
-                        })}
-                    </Dropdown.Menu>
-                </Dropdown>,
-                <span key={uuid.v4()}>   </span>
-            ])
-        } else {
-            config['glyphicon'] = "glyphicon-" + config['glyphicon'];
-            config['url'] = config['url'] + getCurrentIbTag(IBGroup[0]);
-            return StatusLabels.formatLabel(config);
-        }
+  static renderIBTag(IBGroup, ibGroupType) {
+    let configObj;
+
+    switch (ibGroupType) {
+      case "IB":
+        configObj = {
+          name: "IB Tag",
+          icon: ICON_MAP.tag,
+          url: "https://github.com/cms-sw/cmssw/tree/",
+          variant: "primary",
+          tooltip: "View this IB tag on GitHub"
+        };
+        break;
+      case "nextIB":
+        configObj = {
+          name: "See Branch",
+          icon: ICON_MAP.branch,
+          url: "https://github.com/cms-sw/cmssw/commits/",
+          variant: "secondary",
+          tooltip: "View branch commits on GitHub"
+        };
+        break;
+      case "fullBuild":
+        configObj = {
+          name: "Release",
+          icon: ICON_MAP.release,
+          url: "https://github.com/cms-sw/cmssw/releases/tag/",
+          variant: "success",
+          tooltip: "View release on GitHub"
+        };
+        break;
+      default:
+        return null;
     }
 
-    render() {
-        const {IBGroup, showOnlyIbTag, ibGroupType, ib} = this.state;
-        if (showOnlyIbTag) {
-            return <p>{StatusLabels.renderIBTag(IBGroup, ibGroupType)}</p>
-        } else {
-            let menu_data = [StatusLabels.renderIBTag(IBGroup, ibGroupType)]
-            if (ib) {
-                if (ib.gpu_data && ib.gpu_data.relvals){
-                    menu_data.push(
-                        <RelvalsLabel
-                            key="gpu-relvals"
-                            tests={ib.gpu_data.relvals}
-                            type_name="gpu"
-                        />
-                    );
-                }
-                if (ib.gpu_data && ib.gpu_data.qa){
-                    menu_data.push(
-                        <UnitTestsLabel
-                            key="gpu-qa"
-                            tests={ib.gpu_data.qa}
-                            type_name="gpu"
-                        />
-                    );
-                }
-                let relvals = {};
-                if (ib.other_data) {
-                    if (ib.other_data.relvals){
-                        relvals = ib.other_data.relvals;
-                    }
-                }
-                if (relvals) {
-                   const rntupleRelvals = Object.fromEntries(
-                       Object.entries(relvals || {})
-                           .filter(([k]) => k.startsWith("rntuple/"))
-                           .map(([k, v]) => [k.replace(/^rntuple\//, ''), v])  // strip prefix
-                    );
-                    if (Object.keys(rntupleRelvals).length) {
-                        menu_data.push(
-                            <RelvalsLabel
-                                key="other-rntuple-relvals"
-                                tests={rntupleRelvals}
-                                type_name="rntuple"
-                            />
-                        );
-                    }
-                }
-            }
-            menu_data.push(statusLabelsConfigs.map(conf => StatusLabels.renderLabel(conf, ib)));
-            return (<p>{menu_data}</p>)
-        }
+    if (!IBGroup || IBGroup.length === 0) return null;
+
+    if (IBGroup.length > 1) {
+      const colors = COLOR_SCHEME[configObj.variant] || COLOR_SCHEME.secondary;
+
+      return (
+        <Dropdown key={uuidv4()} className="d-inline-block me-1">
+          <Dropdown.Toggle
+            variant="light"
+            size="sm"
+            id={`dropdown-${ibGroupType}-${uuidv4()}`}
+            title={configObj.tooltip}
+            style={{
+              backgroundColor: colors.bg,
+              borderColor: colors.border,
+              color: colors.text,
+              fontWeight: "400",
+              padding: "4px 10px",
+              fontSize: "0.85rem",
+              boxShadow: "none"
+            }}
+          >
+            <span className="me-1" style={{ color: colors.text }}>{configObj.icon}</span>
+            <span style={{ color: colors.text }}>{configObj.name}</span>
+          </Dropdown.Toggle>
+
+          <Dropdown.Menu style={{ minWidth: "200px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+            {IBGroup.map((ib) => {
+              const tag = getCurrentIbTag(ib);
+              const displayName = getDisplayName(ib.release_queue) || tag;
+              return (
+                <Dropdown.Item
+                  key={uuidv4()}
+                  href={configObj.url + tag}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`View ${displayName}`}
+                  style={{ padding: "6px 12px", fontSize: "0.85rem" }}
+                >
+                  {/* IB Tab icon color */}
+                  <span className="me-2" style={{ color: "black" }}>{configObj.icon}</span>
+                  <span>{displayName}</span>
+                </Dropdown.Item>
+              );
+            })}
+          </Dropdown.Menu>
+        </Dropdown>
+      );
     }
+
+    return StatusLabels.formatLabel({
+      name: configObj.name,
+      icon: configObj.icon,
+      url: configObj.url + getCurrentIbTag(IBGroup[0]),
+      variant: configObj.variant,
+      tooltip: configObj.tooltip
+    });
+  }
+
+  render() {
+    const { IBGroup, showOnlyIbTag, ibGroupType, ib } = this.state;
+
+    if (showOnlyIbTag) {
+      return (
+        <div className="d-flex align-items-center">
+          {StatusLabels.renderIBTag(IBGroup, ibGroupType)}
+        </div>
+      );
+    }
+
+    const menuData = [];
+
+    // Add IB Tag
+    const ibTag = StatusLabels.renderIBTag(IBGroup, ibGroupType);
+    if (ibTag) menuData.push(ibTag);
+
+    // Add GPU and other data if available
+    if (ib) {
+      // GPU Relvals
+      if (ib.gpu_data?.relvals && Object.keys(ib.gpu_data.relvals).length > 0) {
+        menuData.push(
+          <RelvalsLabel key="gpu-relvals" tests={ib.gpu_data.relvals} type_name="gpu" />
+        );
+      }
+
+      // GPU QA
+      if (ib.gpu_data?.qa && Object.keys(ib.gpu_data.qa).length > 0) {
+        menuData.push(
+          <UnitTestsLabel key="gpu-qa" tests={ib.gpu_data.qa} type_name="gpu" />
+        );
+      }
+
+      // Other data relvals
+      const relvals = ib.other_data?.relvals || {};
+      const rntupleRelvals = Object.fromEntries(
+        Object.entries(relvals)
+          .filter(([k]) => k.startsWith("rntuple/"))
+          .map(([k, v]) => [k.replace(/^rntuple\//, ""), v])
+      );
+
+      if (Object.keys(rntupleRelvals).length > 0) {
+        menuData.push(
+          <RelvalsLabel key="rntuple-relvals" tests={rntupleRelvals} type_name="rntuple" />
+        );
+      }
+    }
+
+    // Add status labels from config
+    if (statusLabelsConfigs && Array.isArray(statusLabelsConfigs)) {
+      statusLabelsConfigs.forEach((conf) => {
+        const label = StatusLabels.renderLabel(conf, ib);
+        if (label) menuData.push(label);
+      });
+    }
+
+    const validMenuData = menuData.filter((item) => item != null);
+
+    return (
+      <div className="d-flex flex-wrap align-items-center" style={{ gap: "4px" }}>
+        {validMenuData}
+      </div>
+    );
+  }
 }
+
+StatusLabels.propTypes = {
+  IBGroup: PropTypes.array,
+  ibGroupType: PropTypes.oneOf(["IB", "nextIB", "fullBuild"]),
+  showOnlyIbTag: PropTypes.bool
+};
+
+StatusLabels.defaultProps = {
+  IBGroup: [],
+  ibGroupType: "IB",
+  showOnlyIbTag: false
+};
 
 export default StatusLabels;

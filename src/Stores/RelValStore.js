@@ -1,168 +1,277 @@
-import {EventEmitter} from "events";
-import dispatcher from "../dispatcher";
+import React, {
+  createContext,
+  useReducer,
+  useContext,
+  useEffect,
+} from "react";
+
+import { getMultipleFiles } from "../Utils/ajax";
 import * as config from "../relValConfig";
-import {getMultipleFiles} from "../Utils/ajax";
-import {getStructureFromAvalableRelVals, relValStatistics, transforListToObject} from "../Utils/processing";
+import {
+  getStructureFromAvalableRelVals,
+  relValStatistics,
+  transforListToObject,
+} from "../Utils/processing";
 
-const {urls} = config;
+const { urls } = config;
 
-class RelValStore extends EventEmitter {
-    // TODO show statistics can be calculated here
-    constructor() {
-        super();
-        this.setMaxListeners(50); // The more tables in the page are, the more listeners I need. Looks like its cleaning up properly on unmount, but this was not the right approach
-        this._getStructure();
+// -----------------------------
+// Initial State
+// -----------------------------
+const initialState = {
+  structure: {},
+};
+
+// -----------------------------
+// Action Types
+// -----------------------------
+const RelValActionTypes = {
+  SET_STRUCTURE: "SET_STRUCTURE",
+  UPDATE_QUE_DATA: "UPDATE_QUE_DATA",
+};
+
+// -----------------------------
+// Reducer
+// -----------------------------
+function relValReducer(state, action) {
+  switch (action.type) {
+    case RelValActionTypes.SET_STRUCTURE:
+      return {
+        ...state,
+        structure: action.payload,
+      };
+
+    case RelValActionTypes.UPDATE_QUE_DATA: {
+      const { date, que, updatedData } = action.payload;
+      return {
+        ...state,
+        structure: {
+          ...state.structure,
+          [date]: {
+            ...state.structure[date],
+            [que]: updatedData,
+          },
+        },
+      };
     }
 
-    _getStructure() {
-        getMultipleFiles({
-            fileUrlList: [urls.RelvalsAvailableResults],
-            onSuccessCallback: function (responseList) {
-                const relvalsAvailableResults = responseList[0].data;
-                this.structure = getStructureFromAvalableRelVals(relvalsAvailableResults);
-                this.emit("change");
-            }.bind(this)
-        });
-    }
-
-    _getQueData({date, que}) {
-        if (this.structure) {
-            try {
-                return this.structure[date][que];
-            } catch (ex) {
-                console.error('Wrong params: ' + date + " | " + que + ' ;', ex);
-            }
-        }
-    }
-
-    getAllArchsForQue({date, que}) {
-        const allQueInfo = this._getQueData({date, que});
-        if (allQueInfo) {
-            return allQueInfo.allArchs
-        }
-    }
-
-    getAllGPUsForQue({date, que}) {
-        const allQueInfo = this._getQueData({date, que});
-        if (allQueInfo) {
-            return allQueInfo.allGPUs
-        }
-    }
-
-    getAllOthersForQue({date, que}) {
-        const allQueInfo = this._getQueData({date, que});
-        if (allQueInfo) {
-            return allQueInfo.allOthers
-        }
-    }
-
-    getAllFlavorsForQue({date, que}) {
-        const allQueInfo = this._getQueData({date, que});
-        if (allQueInfo) {
-            return Object.keys(allQueInfo.flavors).sort().reverse();
-        }
-    }
-
-    getFlavorStructure({date, que}) {
-        if (this.structure) {
-            try {
-                if (!this.structure[date][que].dataLoaded) {
-                    let archsToLoad = [];
-                    let allRelValIDObject = {};
-                    const {flavors} = this.structure[date][que];
-                    const allFlavors = this.getAllFlavorsForQue({date, que});
-                    allFlavors.forEach(flavorName => {
-                        const archs = Object.keys(flavors[flavorName]);
-                        archs.forEach(arch => {
-                            const types = Object.keys(flavors[flavorName][arch]);
-                            types.forEach(type => {
-                                const names = Object.keys(flavors[flavorName][arch][type]);
-                                names.forEach(name => {
-                                    archsToLoad.push(flavors[flavorName][arch][type][name]);
-                                });
-                            });
-                        });
-                    });
-                    const relValsUrl = archsToLoad.map(i => urls.relValsResult(i.arch, i.date, i.que, i.flavor, i.type, i.name));
-                    const relValsIdToHashcodeUrl = archsToLoad.map(i => urls.relValWorkFlowToIdHash(i.arch, i.date, i.que, i.flavor, i.type, i.name));
-
-                    // load RelVals status and structure it
-                    getMultipleFiles({
-                        fileUrlList: [...relValsUrl, ...relValsIdToHashcodeUrl], // loaded data together
-                        onSuccessCallback: function (responseList) {
-                            for (let i = 0; i < archsToLoad.length; i++) {
-                                const {data: relvals} = responseList[i];
-                                const workflowHashes = responseList[archsToLoad.length + i].data;
-                                const {que, date, arch, flavor, type, name} = archsToLoad[i];
-                                let relValObject = transforListToObject(relvals);
-                                const workflowKeys = Object.keys(relValObject);
-                                workflowKeys.forEach(wf => {
-                                    let {steps} = relValObject[wf];
-                                    for (let s = 0; s < steps.length; s++) {
-                                        let workflowHash = workflowHashes[wf + "-" + (s + 1)];
-                                        steps[s]['workflowHash'] = workflowHash;
-                                    }
-                                });
-                                this.structure[date][que].flavors[flavor][arch][type][name] = relValObject;
-                                // to add statistics to relVals
-                                if (!this.structure[date][que].relvalStatus) {
-                                    this.structure[date][que].relvalStatus = {};
-                                }
-                                if (!this.structure[date][que].relvalStatus[flavor]) {
-                                    this.structure[date][que].relvalStatus[flavor] = {};
-                                }
-                                if (!this.structure[date][que].relvalStatus[flavor][arch]) {
-                                    this.structure[date][que].relvalStatus[flavor][arch] = {};
-                                }
-                                if (!this.structure[date][que].relvalStatus[flavor][arch][type]) {
-                                    this.structure[date][que].relvalStatus[flavor][arch][type] = {};
-                                }
-                                this.structure[date][que].relvalStatus[flavor][arch][type][name] = relValStatistics(relvals);
-                                // ---
-                                workflowKeys.forEach((id) => {
-                                    const exitCode = relValObject[id].exitcode;
-                                    if (exitCode !== 0) {
-                                        allRelValIDObject[id] = {
-                                            id,
-                                            passed: false,
-                                            cmdName: relValObject[id].name
-                                        }
-                                    } else if (!allRelValIDObject[id]) {
-                                        allRelValIDObject[id] = {
-                                            id,
-                                            passed: true,
-                                            cmdName: relValObject[id].name
-                                        }
-                                    }
-                                })
-                            }
-                            let relValKeyList = Object.keys(allRelValIDObject).sort((a, b) => a - b);
-                            this.structure[date][que].allRelvals = relValKeyList.map((i, index) => {
-                                allRelValIDObject[i]['index'] = index + 1;
-                                return allRelValIDObject[i];
-                            });
-                            this.structure[date][que].dataLoaded = true;
-                            this.emit("change");
-                        }.bind(this)
-                    });
-
-                }
-                return this.structure[date][que];
-            }
-            catch (ex) {
-                console.error('Wrong params: ' + date + " | " + que + ' ;', ex);
-            }
-        }
-    }
-
-    handleActions(action) {
-        switch (action.type) {
-            // TODO
-        }
-    }
-
+    default:
+      return state;
+  }
 }
 
-const relValStore = new RelValStore();
-dispatcher.register(relValStore.handleActions.bind(relValStore));
-export default relValStore;
+// -----------------------------
+// Context
+// -----------------------------
+const RelValContext = createContext(null);
+
+// -----------------------------
+// Provider
+// -----------------------------
+export function RelValProvider({ children }) {
+  const [state, dispatch] = useReducer(relValReducer, initialState);
+
+  // Load initial RelVal structure
+  useEffect(() => {
+    getMultipleFiles({
+      fileUrlList: [urls.RelvalsAvailableResults],
+      onSuccessCallback: (responseList) => {
+        const relvalsAvailableResults = responseList[0]?.data || {};
+        const structure = getStructureFromAvalableRelVals(
+          relvalsAvailableResults
+        );
+        dispatch({
+          type: RelValActionTypes.SET_STRUCTURE,
+          payload: structure,
+        });
+      },
+    });
+  }, []);
+
+  // -----------------------------
+  // Selectors
+  // -----------------------------
+  const getQueData = ({ date, que }) => state.structure?.[date]?.[que];
+
+  const getAllArchsForQue = ({ date, que }) =>
+    getQueData({ date, que })?.allArchs || [];
+
+  const getAllGPUsForQue = ({ date, que }) =>
+    getQueData({ date, que })?.allGPUs || [];
+
+  const getAllOthersForQue = ({ date, que }) =>
+    getQueData({ date, que })?.allOthers || [];
+
+  const getAllFlavorsForQue = ({ date, que }) => {
+    const flavors = getQueData({ date, que })?.flavors;
+    return flavors ? Object.keys(flavors).sort().reverse() : [];
+  };
+
+  // -----------------------------
+  // Fetch RelVal results for a queue
+  // -----------------------------
+  const fetchQueData = ({ date, que }) => {
+    const queInfo = getQueData({ date, que });
+
+    // Already loaded → do nothing
+    if (!queInfo || queInfo.dataLoaded) {
+      return;
+    }
+
+    // Collect all entries to load
+    const entriesToLoad = [];
+
+    Object.keys(queInfo.flavors || {}).forEach((flavor) => {
+      Object.keys(queInfo.flavors[flavor] || {}).forEach((arch) => {
+        Object.keys(queInfo.flavors[flavor][arch] || {}).forEach((type) => {
+          Object.keys(queInfo.flavors[flavor][arch][type] || {}).forEach(
+            (name) => {
+              entriesToLoad.push({
+                date,
+                que,
+                flavor,
+                arch,
+                type,
+                name,
+              });
+            }
+          );
+        });
+      });
+    });
+
+    if (entriesToLoad.length === 0) {
+      dispatch({
+        type: RelValActionTypes.UPDATE_QUE_DATA,
+        payload: {
+          date,
+          que,
+          updatedData: { ...queInfo, dataLoaded: true },
+        },
+      });
+      return;
+    }
+
+    const relValsUrls = entriesToLoad.map((i) =>
+      urls.relValsResult(i.arch, i.date, i.que, i.flavor, i.type, i.name)
+    );
+
+    const workflowUrls = entriesToLoad.map((i) =>
+      urls.relValWorkFlowToIdHash(
+        i.arch,
+        i.date,
+        i.que,
+        i.flavor,
+        i.type,
+        i.name
+      )
+    );
+
+    getMultipleFiles({
+      fileUrlList: [...relValsUrls, ...workflowUrls],
+      onSuccessCallback: (responseList) => {
+        const updatedQueInfo = {
+          ...queInfo,
+          relvalStatus: {},
+        };
+
+        const allRelValIdMap = {};
+
+        entriesToLoad.forEach((entry, index) => {
+          const relValsResp = responseList[index];
+          const wfHashResp =
+            responseList[index + entriesToLoad.length];
+
+          if (!relValsResp || !wfHashResp) return;
+
+          const relVals = relValsResp.data || [];
+          const workflowHashes = wfHashResp.data || {};
+
+          const relValObj = transforListToObject(relVals);
+
+          // Attach workflow hashes
+          Object.values(relValObj).forEach((rv) => {
+            if (!rv?.steps) return;
+            rv.steps.forEach((step, idx) => {
+              step.workflowHash =
+                workflowHashes[`${rv.id}-${idx + 1}`];
+            });
+          });
+
+          // Store relvals
+          updatedQueInfo.flavors[entry.flavor][entry.arch][entry.type][
+            entry.name
+          ] = relValObj;
+
+          // Compute statistics
+          const relValList = Object.values(relValObj);
+          const stats = relValStatistics(relValList);
+
+          if (!updatedQueInfo.relvalStatus[entry.flavor])
+            updatedQueInfo.relvalStatus[entry.flavor] = {};
+          if (!updatedQueInfo.relvalStatus[entry.flavor][entry.arch])
+            updatedQueInfo.relvalStatus[entry.flavor][entry.arch] = {};
+          if (
+            !updatedQueInfo.relvalStatus[entry.flavor][entry.arch][entry.type]
+          )
+            updatedQueInfo.relvalStatus[entry.flavor][entry.arch][
+              entry.type
+            ] = {};
+
+          updatedQueInfo.relvalStatus[entry.flavor][entry.arch][
+            entry.type
+          ][entry.name] = stats;
+
+          // Collect relval list
+          relValList.forEach((rv) => {
+            allRelValIdMap[rv.id] = {
+              id: rv.id,
+              passed: rv.exitcode === 0,
+              cmdName: rv.name,
+            };
+          });
+        });
+
+        updatedQueInfo.allRelvals = Object.keys(allRelValIdMap)
+          .sort((a, b) => Number(a) - Number(b))
+          .map((id, index) => ({
+            ...allRelValIdMap[id],
+            index: index + 1,
+          }));
+
+        updatedQueInfo.dataLoaded = true;
+
+        dispatch({
+          type: RelValActionTypes.UPDATE_QUE_DATA,
+          payload: { date, que, updatedData: updatedQueInfo },
+        });
+      },
+    });
+  };
+
+  // -----------------------------
+  // Provider value
+  // -----------------------------
+  const value = {
+    state,
+    getQueData,
+    getAllArchsForQue,
+    getAllGPUsForQue,
+    getAllOthersForQue,
+    getAllFlavorsForQue,
+    fetchQueData,
+  };
+
+  return (
+    <RelValContext.Provider value={value}>
+      {children}
+    </RelValContext.Provider>
+  );
+}
+
+// -----------------------------
+// Hook
+// -----------------------------
+export function useRelVal() {
+  return useContext(RelValContext);
+}
