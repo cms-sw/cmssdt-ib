@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { useTable, useExpanded, useFilters, usePagination } from "react-table";
 import { Modal, Button, OverlayTrigger, Popover } from "react-bootstrap";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import { v4 as uuidv4 } from "uuid";
 import PropTypes from "prop-types";
+import { FaEye } from "react-icons/fa";
 
 import * as config from "../../relValConfig";
 import { LABEL_COLOR, LABELS_TEXT, RELVAL_STATUS_ENUM } from "../../relValConfig";
@@ -15,6 +16,7 @@ import {
   getDisplayName,
   getObjectKeys,
   isRelValKnownFailed,
+  isRelValTrackedForFailed,
   valueInTheList,
 } from "../../Utils/processing";
 
@@ -123,7 +125,7 @@ const StatusBadge = ({ text, color, onClick, glyphicon }) => {
         e.currentTarget.style.boxShadow = "none";
       }}
     >
-      {glyphicon && <span style={{ marginRight: "4px" }}>{glyphicon}</span>}
+      {glyphicon && <span style={{ marginRight: "4px", display: "inline-flex", alignItems: "center" }}>{glyphicon}</span>}
       {text}
     </span>
   );
@@ -170,15 +172,26 @@ const ArchStack = ({ arch, colorScheme }) => {
 /* ------------------------------------------------------------------ */
 /* Step Cell Component */
 /* ------------------------------------------------------------------ */
-const StepCell = ({ stepNumber, status, onClick, logUrl, exitCode, errors, warnings }) => {
+const StepCell = ({
+  stepNumber,
+  status,
+  onClick,
+  logUrl,
+  exitCode,
+  errors,
+  warnings,
+  isKnownFailed = false,
+  showTrackedIcon = false,
+}) => {
   let bgColor = "#6c757d";
+  const glyphicon = showTrackedIcon ? <FaEye size={11} /> : null;
 
   if (status === RELVAL_STATUS_ENUM.PASSED) {
     if (errors > 0) bgColor = LABEL_COLOR.PASSED_ERRORS_COLOR;
     else if (warnings > 0) bgColor = LABEL_COLOR.PASSED_WARNINGS_COLOR;
     else bgColor = LABEL_COLOR.PASSED_COLOR;
   } else if (status === RELVAL_STATUS_ENUM.FAILED) {
-    bgColor = LABEL_COLOR.FAILED_COLOR;
+    bgColor = isKnownFailed ? LABEL_COLOR.PASSED_COLOR : LABEL_COLOR.FAILED_COLOR;
   } else if (status === RELVAL_STATUS_ENUM.DAS_ERROR) {
     bgColor = LABEL_COLOR.DAS_ERROR_COLOR;
   } else if (status === RELVAL_STATUS_ENUM.NOTRUN) {
@@ -192,10 +205,10 @@ const StepCell = ({ stepNumber, status, onClick, logUrl, exitCode, errors, warni
       <StatusBadge text={`Step ${stepNumber}`} color="#6c757d" onClick={onClick} />
       {logUrl ? (
         <a href={logUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-          <StatusBadge text={exitCode || getLabelName(status)} color={bgColor} />
+          <StatusBadge text={exitCode || getLabelName(status)} color={bgColor} glyphicon={glyphicon} />
         </a>
       ) : (
-        <StatusBadge text={exitCode || getLabelName(status)} color={bgColor} />
+        <StatusBadge text={exitCode || getLabelName(status)} color={bgColor} glyphicon={glyphicon} />
       )}
     </div>
   );
@@ -228,6 +241,25 @@ const Pagination = ({
   pageSize,
   pageSizeOptions = [20, 50, 100, 500, 1000],
 }) => {
+  const [pageInput, setPageInput] = useState(String(pageIndex + 1));
+
+  React.useEffect(() => {
+    setPageInput(String(pageIndex + 1));
+  }, [pageIndex]);
+
+  const commitPageInput = () => {
+    const numeric = Number(pageInput);
+
+    if (!Number.isFinite(numeric)) {
+      setPageInput(String(pageIndex + 1));
+      return;
+    }
+
+    const safePage = Math.max(1, Math.min(pageCount, Math.trunc(numeric)));
+    setPageInput(String(safePage));
+    gotoPage(safePage - 1);
+  };
+
   return (
     <div
       style={{
@@ -263,10 +295,16 @@ const Pagination = ({
           Go to page:{" "}
           <input
             type="number"
-            defaultValue={pageIndex + 1}
-            onChange={(e) => {
-              const page = e.target.value ? Number(e.target.value) - 1 : 0;
-              gotoPage(page);
+            min="1"
+            max={pageCount}
+            step="1"
+            value={pageInput}
+            onChange={(e) => setPageInput(e.target.value)}
+            onBlur={commitPageInput}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                commitPageInput();
+              }
             }}
             style={{ width: "70px", padding: "4px 8px", borderRadius: 6, border: "1px solid #ddd" }}
           />
@@ -345,7 +383,6 @@ const ResultTableWithSteps = ({
     [getWorkFlowList]
   );
 
-  // Build columns
   const columns = useMemo(() => {
     const cols = [
       {
@@ -405,7 +442,7 @@ const ResultTableWithSteps = ({
         const types = structure.flavors[flavorKey][archKey] || {};
 
         Object.keys(types).forEach((typeKey) => {
-          let typeNames = getObjectKeys(types[typeKey] || {});
+          const typeNames = getObjectKeys(types[typeKey] || {});
           let selectedKeys = [];
 
           if (typeKey === "gpu") {
@@ -427,9 +464,9 @@ const ResultTableWithSteps = ({
             } else {
               Object.values(nameData).forEach((relVal) => {
                 if (relVal) {
-                  if (isRelValKnownFailed(relVal)) statistics.known_failed++;
-                  else if (relVal.exitcode !== 0) statistics.failed++;
-                  else statistics.passed++;
+                  if (isRelValKnownFailed(relVal)) statistics.known_failed += 1;
+                  else if (relVal.exitcode !== 0) statistics.failed += 1;
+                  else statistics.passed += 1;
                 }
               });
             }
@@ -490,11 +527,12 @@ const ResultTableWithSteps = ({
                 const data = nameData[row.id];
                 if (!data) return null;
 
-                const lastStep = data.steps[data.steps.length - 1];
+                const { steps, exitcode } = data;
+                const lastStep = steps[steps.length - 1];
                 const { status } = lastStep;
 
                 if (status === RELVAL_STATUS_ENUM.PASSED) return getLabelName(status);
-                if (status === RELVAL_STATUS_ENUM.FAILED) return getExitCodeName(data.exitcode);
+                if (status === RELVAL_STATUS_ENUM.FAILED) return getExitCodeName(exitcode);
                 if (status === RELVAL_STATUS_ENUM.DAS_ERROR) return getLabelName(status);
                 if (status === RELVAL_STATUS_ENUM.NOTRUN) return getLabelName(status);
                 if (status === RELVAL_STATUS_ENUM.TIMEOUT) return getLabelName(status);
@@ -507,11 +545,15 @@ const ResultTableWithSteps = ({
               filterMethod: (rows, id, filterValue) => rows,
               Cell: ({ row }) => {
                 const data = nameData[row.original.id];
-                if (!data) return <div style={{ textAlign: "center", padding: "4px" }}>—</div>;
+                if (!data) {
+                  return <div style={{ textAlign: "center", padding: "4px" }}>—</div>;
+                }
 
                 const ib = getIb(ibDate, ibQue, flavorKey);
-                const steps = data.steps;
+                const { steps } = data;
                 const stepsToShow = row.isExpanded ? steps : [steps[steps.length - 1]];
+                const knownFailed = isRelValKnownFailed(data);
+                const trackedForFailed = isRelValTrackedForFailed(data);
 
                 return (
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -532,6 +574,8 @@ const ResultTableWithSteps = ({
                           exitCode={exitCodeText}
                           errors={errors}
                           warnings={warnings}
+                          isKnownFailed={knownFailed}
+                          showTrackedIcon={trackedForFailed}
                           onClick={() => handleShow(steps, data.name)}
                           logUrl={getLogAddress(
                             archKey,
@@ -624,7 +668,6 @@ const ResultTableWithSteps = ({
 
   return (
     <>
-      {/* Modal */}
       <Modal show={showModal} onHide={handleClose} size="lg" centered scrollable>
         <Modal.Header closeButton className="bg-light">
           <Modal.Title>{modalTitle}</Modal.Title>
@@ -698,7 +741,6 @@ const ResultTableWithSteps = ({
         </Modal.Footer>
       </Modal>
 
-      {/* Table */}
       <div style={{ ...style, display: "flex", flexDirection: "column" }}>
         <div style={{ overflow: "auto", flex: 1, position: "relative" }}>
           <table
@@ -793,22 +835,6 @@ const ResultTableWithSteps = ({
                       <span className="text-muted" style={{ fontSize: "0.95rem" }}>
                         Try adjusting your filters
                       </span>
-                      <div className="mt-3 text-left" style={{ maxWidth: "520px" }}>
-                        {/* <strong>Selected filters:</strong>
-                        <pre className="mt-2 p-3 bg-light" style={{ fontSize: "0.9rem", borderRadius: 10 }}>
-                          {JSON.stringify(
-                            {
-                              selectedArchs,
-                              selectedGPUs,
-                              selectedOthers,
-                              selectedFlavors,
-                              selectedFilterStatus,
-                            },
-                            null,
-                            2
-                          )}
-                        </pre> */}
-                      </div>
                     </div>
                   </td>
                 </tr>
@@ -817,7 +843,6 @@ const ResultTableWithSteps = ({
           </table>
         </div>
 
-        {/* Pagination Controls */}
         {filteredRelVals.length > 0 && (
           <Pagination
             canPreviousPage={canPreviousPage}
