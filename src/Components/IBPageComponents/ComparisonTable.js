@@ -893,7 +893,7 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
 
               {shouldShowRow("addons") && (
                 <tr>
-                  <td className="name-column fw-semibold">Other</td>
+                  <td className="name-column fw-semibold">AddOn</td>
                   {renderRowCells({
                     resultType: 'addons',
                     ifPassed: (details, ibName) => renderCell(renderSphere({

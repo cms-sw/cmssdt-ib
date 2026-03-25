@@ -202,7 +202,7 @@ const StepCell = ({
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "4px", flexWrap: "wrap" }}>
-      <StatusBadge text={`Step ${stepNumber}`} color="#6c757d" onClick={onClick} />
+      <StatusBadge text={` ${stepNumber}`} color="#6c757d" onClick={onClick} />
       {logUrl ? (
         <a href={logUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
           <StatusBadge text={exitCode || getLabelName(status)} color={bgColor} glyphicon={glyphicon} />
