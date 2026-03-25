@@ -12,7 +12,7 @@ export const LABEL_COLOR = {
 
 export const LABELS_TEXT = {
     PASSED: 'Passed',
-    FAILED: 'Failed ',
+    FAILED: 'Failed',
     NOTRUN: 'NotRun',
     DAS_ERROR: 'DAS-Err',
     TIMEOUT: 'TimeOut',
