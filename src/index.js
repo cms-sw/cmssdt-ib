@@ -1,20 +1,32 @@
-// --- default stylesheets,
-import 'bootstrap/dist/css/bootstrap.css';
-import 'bootstrap/dist/css/bootstrap-theme.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
-import {HashRouter} from "react-router-dom";
 
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
+import { HashRouter } from 'react-router-dom';
+
 import App from './App';
-// import registerServiceWorker from './registerServiceWorker';
 import { unregister } from './registerServiceWorker';
 
-ReactDOM.render(
-    <HashRouter>
-        <App/>
-    </HashRouter>, document.getElementById('root'));
+import { ShowArchProvider } from './context/ShowArchContext';
+import { CommandProvider } from './context/CommandContext';
+import { RelValProvider } from './Stores/RelValStore';
 
-// TODO improves performance, but makes development changes not immediate in production
-// registerServiceWorker();
+const container = document.getElementById('root');
+const root = createRoot(container);
+
+root.render(
+  <React.StrictMode>
+    <HashRouter>
+      <RelValProvider>
+        <ShowArchProvider>
+          <CommandProvider>
+            <App />
+          </CommandProvider>
+        </ShowArchProvider>
+      </RelValProvider>
+    </HashRouter>
+  </React.StrictMode>
+);
+
 unregister();

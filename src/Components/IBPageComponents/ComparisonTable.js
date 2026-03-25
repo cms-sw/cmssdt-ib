@@ -1,550 +1,960 @@
-import React, {Component} from 'react';
+import React, { useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Label, OverlayTrigger, Table, Tooltip} from "react-bootstrap";
+import { OverlayTrigger, Table, Tooltip, Badge } from "react-bootstrap";
 import {
-    checkLabelType,
-    getAllActiveArchitecturesFromIBGroupByFlavor, getDisplayName, getInfoFromRelease,
-    valueInTheList
+  checkLabelType,
+  getAllActiveArchitecturesFromIBGroupByFlavor,
+  getDisplayName,
+  getInfoFromRelease,
+  valueInTheList
 } from '../../Utils/processing';
 import _ from 'underscore';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import { config, showLabelConfig } from '../../config';
-import ShowArchStore from "../../Stores/ShowArchStore";
+import { useShowArch } from "../../context/ShowArchContext";
+import {
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaQuestionCircle,
+  FaTimesCircle,
+  FaInfoCircle,
+  FaCheck,
+  FaTimes,
+  FaPlay,
+  FaCodeBranch,
+  FaTag,
+  FaExternalLinkAlt,
+  FaBug,
+  FaWrench
+} from 'react-icons/fa';
 
-const {tooltipDelayInMs, urls} = config;
+const { tooltipDelayInMs, urls } = config;
+
+// Compact theme with reduced sizes
+const THEME = {
+  primary: '#64748b',
+  primaryLight: '#94a3b8',
+  primaryDark: '#475569',
+  secondary: '#64748b',
+  success: '#5EB85E',
+  successLight: '#79C779',
+  successDark: '#3E9A3E',
+  warning: '#f59e0b',
+  warningLight: '#fbbf24',
+  warningDark: '#d97706',
+  danger: '#ef4444',
+  dangerLight: '#f87171',
+  dangerDark: '#dc2626',
+  info: '#3b82f6',
+  infoLight: '#60a5fa',
+  infoDark: '#2563eb',
+  dark: '#1e293b',
+  light: '#f8fafc',
+  border: '#e2e8f0',
+  borderDark: '#cbd5e1',
+  hover: '#f1f5f9',
+  text: {
+    primary: '#0f172a',
+    secondary: '#475569',
+    muted: '#64748b',
+    light: '#f8fafc'
+  }
+};
+
+// Compact sphere styles - perfectly circular with enhanced 3D effects
+const sphereStyles = {
+  sphere: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '30px',
+    height: '30px',
+    borderRadius: '50%',
+    padding: '0 7px',
+    color: 'white',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+    transition: 'all 0.2s ease',
+    cursor: 'pointer',
+    border: '1px solid rgba(255,255,255,0.2)',
+    position: 'relative',
+  },
+  sphereSuccess: {
+    background: `radial-gradient(circle at 30% 25%, ${THEME.successLight} 0%, ${THEME.success} 50%, ${THEME.successDark} 90%)`,
+    boxShadow: '0 4px 10px -2px rgba(16, 185, 129, 0.4), inset 0 -3px 0 rgba(0,0,0,0.2)',
+  },
+  sphereDanger: {
+    background: `radial-gradient(circle at 30% 25%, ${THEME.dangerLight} 0%, ${THEME.danger} 50%, ${THEME.dangerDark} 90%)`,
+    boxShadow: '0 4px 10px -2px rgba(239, 68, 68, 0.4), inset 0 -3px 0 rgba(0,0,0,0.2)',
+  },
+  sphereWarning: {
+    background: `radial-gradient(circle at 30% 25%, ${THEME.warningLight} 0%, ${THEME.warning} 50%, ${THEME.warningDark} 90%)`,
+    boxShadow: '0 4px 10px -2px rgba(245, 158, 11, 0.4), inset 0 -3px 0 rgba(0,0,0,0.2)',
+  },
+  sphereSecondary: {
+    background: `radial-gradient(circle at 30% 25%, #9ca3af 0%, ${THEME.secondary} 50%, #4b5563 90%)`,
+    boxShadow: '0 4px 10px -2px rgba(100, 116, 139, 0.4), inset 0 -3px 0 rgba(0,0,0,0.2)',
+  },
+  sphereInfo: {
+    background: `radial-gradient(circle at 30% 25%, ${THEME.infoLight} 0%, ${THEME.info} 50%, ${THEME.infoDark} 90%)`,
+    boxShadow: '0 4px 10px -2px rgba(59, 130, 246, 0.4), inset 0 -3px 0 rgba(0,0,0,0.2)',
+  },
+  sphereHover: {
+    transform: 'translateY(-2px) scale(1.06)',
+  },
+  sphereGlow: {
+    position: 'absolute',
+    top: '0',
+    left: '0',
+    right: '0',
+    bottom: '0',
+    borderRadius: '50%',
+    background: 'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 60%)',
+    pointerEvents: 'none',
+  },
+  sphereReflection: {
+    position: 'absolute',
+    top: '10%',
+    left: '10%',
+    width: '30%',
+    height: '30%',
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 80%)',
+    pointerEvents: 'none',
+  }
+};
+
+// Compact flavor cards
+const FLAVOR_CARDS = Array.from({ length: 6 }).map(() => ({
+  bg: 'linear-gradient(135deg, #64748b 0%, #475569 100%)',
+  text: '#ffffff',
+  border: '#334155',
+  shadow: '0 2px 4px -2px rgba(0,0,0,0.1)'
+}));
+
+const statusStyles = {
+  success: {
+    sphereStyle: sphereStyles.sphereSuccess,
+    sphereIcon: <FaCheck size={12} />,
+    description: 'All tests passed successfully',
+    action: 'Click to view details',
+  },
+  danger: {
+    sphereStyle: sphereStyles.sphereDanger,
+    sphereIcon: <FaTimes size={12} />,
+    description: 'Build or tests failed',
+    action: 'Click to view error logs',
+  },
+  warning: {
+    sphereStyle: sphereStyles.sphereWarning,
+    sphereIcon: <FaExclamationTriangle size={12} />,
+    description: 'Warnings detected',
+    action: 'Click to review warnings',
+  },
+  secondary: {
+    sphereStyle: sphereStyles.sphereSecondary,
+    sphereIcon: <FaQuestionCircle size={12} />,
+    description: 'Status unknown',
+    action: 'No additional information',
+  },
+  info: {
+    sphereStyle: sphereStyles.sphereInfo,
+    sphereIcon: <FaPlay size={12} />,
+    description: 'Tests in progress',
+    action: 'Check back later',
+  }
+};
+
+const checkIfItIsAPatch = (current_tag, architecture, tagName) => {
+  const intendedTagName1 = `IB/${current_tag}/${architecture}`;
+  const intendedTagName2 = `ERR/${current_tag}/${architecture}`;
+  return (tagName !== intendedTagName1 && tagName !== intendedTagName2);
+};
+
+const removeKeysFromDetails = (details, keysToRemove = []) => {
+  if (!details || typeof details !== 'object') return details;
+  const filtered = { ...details };
+  keysToRemove.forEach((key) => {
+    delete filtered[key];
+  });
+  return filtered;
+};
+
+const ArchTooltip = ({ cmsdistTag, isPatch, baseTag }) => (
+  <div className="text-start p-3" style={{ minWidth: '280px' }}>
+    <div className="d-flex align-items-center border-bottom pb-2 mb-2">
+      <FaCodeBranch className="text-primary me-2" size={16} />
+      <span className="fw-semibold">CMSDist Tag Information</span>
+    </div>
+
+    <div className="mb-3">
+      <div className="d-flex align-items-center mb-1">
+        <FaTag className="text-secondary me-2" size={12} />
+        <span className="text-muted small fw-semibold">Current Tag:</span>
+      </div>
+      <code className="bg-light p-2 rounded d-block small" style={{ fontFamily: 'monospace' }}>
+        {cmsdistTag || 'N/A'}
+      </code>
+    </div>
+
+    {isPatch ? (
+      <div className="mb-2">
+        <div className="d-flex align-items-center mb-1">
+          <FaExclamationTriangle className="text-warning me-2" size={12} />
+          <span className="text-muted small fw-semibold">Patch Build:</span>
+        </div>
+        <div className="bg-warning bg-opacity-10 p-2 rounded small">
+          Using same cmsdist tag as <code className="bg-light px-1 rounded">{baseTag}</code>
+        </div>
+      </div>
+    ) : (
+      <div className="mb-2">
+        <div className="d-flex align-items-center mb-1">
+          <FaCheckCircle className="text-success me-2" size={12} />
+          <span className="text-muted small fw-semibold">Full Build:</span>
+        </div>
+        <div className="bg-success bg-opacity-10 p-2 rounded small">
+          Using a dedicated cmsdist tag for this build
+        </div>
+      </div>
+    )}
+
+    <div className="d-flex justify-content-end mt-3 pt-2 border-top">
+      <small className="text-primary d-flex align-items-center fw-semibold">
+        Click to view commits <FaExternalLinkAlt className="ms-1" size={10} />
+      </small>
+    </div>
+  </div>
+);
+
+const StatusTooltip = ({ status, value, details, type }) => {
+  const style = statusStyles[status] || statusStyles.secondary;
+
+  const formatValue = (val) => {
+    if (val === null || val === undefined) return '—';
+    if (typeof val === 'object') {
+      try { return JSON.stringify(val); } catch { return '[Complex Data]'; }
+    }
+    return String(val);
+  };
+
+  return (
+    <div className="text-start p-3" style={{ minWidth: '250px' }}>
+      <div className="d-flex align-items-center border-bottom pb-2 mb-2">
+        <div style={{ ...sphereStyles.sphere, ...style.sphereStyle, width: '24px', height: '24px' }}>
+          {style.sphereIcon}
+        </div>
+        <span className="fw-semibold ms-2">{type || 'Status'} Information</span>
+      </div>
+
+      <div className="mb-2">
+        <div className="d-flex align-items-center mb-1">
+          <FaInfoCircle className="text-info me-2" size={12} />
+          <span className="text-muted small fw-semibold">Current Status:</span>
+        </div>
+        <div className="d-flex align-items-center mt-1">
+          <div style={{ ...sphereStyles.sphere, ...style.sphereStyle, width: '28px', height: '28px', marginRight: '8px' }}>
+            {style.sphereIcon}
+          </div>
+          <span className="small">{style.description}</span>
+        </div>
+      </div>
+
+      {details && Object.keys(details).length > 0 && (
+        <div className="mb-2">
+          <div className="d-flex align-items-center mb-1">
+            <FaBug className="text-secondary me-2" size={12} />
+            <span className="text-muted small fw-semibold">Details:</span>
+          </div>
+          <div className="bg-light p-2 rounded small">
+            {Object.entries(details).map(([key, val]) => {
+              if (val && typeof val === 'object' && Object.keys(val).length === 0) return null;
+              return (
+                <div key={key} className="d-flex justify-content-between mb-1">
+                  <span className="text-muted">{key}:</span>
+                  <span className="fw-semibold ms-2" style={{ wordBreak: 'break-word', maxWidth: '150px' }}>
+                    {formatValue(val)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="d-flex justify-content-end mt-2 pt-2 border-top">
+        <small className="text-muted d-flex align-items-center">
+          <FaWrench className="me-1" size={10} />
+          {style.action}
+        </small>
+      </div>
+    </div>
+  );
+};
 
 function renderTooltip(cellContent, tooltipContent) {
-    return (
-        <OverlayTrigger key={uuid.v4()} placement="top"
-                        overlay={<Tooltip id={uuid.v4()}>{tooltipContent}</Tooltip>}
-                        delay={tooltipDelayInMs}>
-            {cellContent}
-        </OverlayTrigger>
-    )
+  return (
+    <OverlayTrigger
+      key={uuidv4()}
+      placement="top"
+      overlay={<Tooltip id={uuidv4()} className="custom-tooltip p-0">{tooltipContent}</Tooltip>}
+      delay={tooltipDelayInMs}
+    >
+      <span className="d-inline-block">{cellContent}</span>
+    </OverlayTrigger>
+  );
 }
 
 function renderCell(cellInfo) {
-    return (
-        <td key={uuid.v4()}>
-            {cellInfo}
-        </td>
-    )
+  return (
+    <td key={uuidv4()} className="align-middle p-1" style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+      {cellInfo}
+    </td>
+  );
 }
 
-function renderLabel({colorType = "default", value, glyphicon, link, tooltipContent} = {}) {
-    if (tooltipContent !== undefined) {
-        const cellContent = (
-            <a href={link} className={`btn label label-${colorType}`}>
-                {glyphicon ? <span className={`glyphicon ${glyphicon}`}/> : value}
-            </a>
-        );
-        return renderTooltip(cellContent, tooltipContent);
+// Enhanced renderSphere
+function renderSphere({ status = "secondary", value, icon, link, tooltipContent, details, type } = {}) {
+  const style = statusStyles[status] || statusStyles.secondary;
+  const displayValue = value !== undefined ? value : '';
 
-    } else {
-        return (
-            <a href={link} className={`btn label label-${colorType}`}>
-                {glyphicon ? <span className={`glyphicon ${glyphicon}`}/> : value}
-            </a>
-        );
-    }
+  if (displayValue === 0 || displayValue === '') return null;
+
+  const sphereContent = (
+    <div
+      className={`enhanced-sphere ${status === 'success' ? 'sphere-success' : ''}`}
+      style={{
+        ...sphereStyles.sphere,
+        ...style.sphereStyle,
+        minWidth: displayValue.toString().length > 2 ? '36px' : '30px',
+        width: 'auto',
+        borderRadius: '50%',
+      }}
+      onMouseEnter={(e) => {
+        Object.assign(e.currentTarget.style, sphereStyles.sphereHover);
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+      }}
+    >
+      <div style={sphereStyles.sphereGlow} />
+      <div style={sphereStyles.sphereReflection} />
+      <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center' }}>
+        {icon || style.sphereIcon}
+        <span className="ms-1">{displayValue}</span>
+      </div>
+    </div>
+  );
+
+  const enhancedTooltip = tooltipContent || (
+    <StatusTooltip status={status} value={displayValue} details={details ? { ...details } : {}} type={type} />
+  );
+
+  const wrappedContent = link ? (
+    <a href={link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+      {sphereContent}
+    </a>
+  ) : sphereContent;
+
+  return renderTooltip(wrappedContent, enhancedTooltip);
 }
 
-const getBuildOrUnitUrl = function (params) {
-    const {file, arch, ibName} = params;
-    const urlParameter = params.urlParameter ? params.urlParameter : '';
-    if (!file) {
-        // do nothing
-    } else if (file === 'not-ready') {
-        return urls.scramDetailUrl + arch + ";" + ibName
-    } else {
-        let link_parts = file.split('/');
-        const si = 4;
-        link_parts = link_parts.slice(si, si + 5);
-        return urls.buildOrUnitTestUrl + link_parts.join('/') + urlParameter;
+const getBuildOrUnitUrl = ({ file, arch, ibName, urlParameter = '' }) => {
+  if (!file) return undefined;
+  if (file === 'not-ready') return urls.scramDetailUrl + arch + ";" + ibName;
+  const linkParts = file.split('/').slice(4, 9);
+  return urls.buildOrUnitTestUrl + linkParts.join('/') + urlParameter;
+};
+
+const getRelValUrl = ({ file, arch, ibName, selectedStatus }) => {
+  if (!file) return undefined;
+  if (file === 'not-ready') return urls.relVals + arch + ';' + ibName;
+  const [, que, flavor, date] = getInfoFromRelease(ibName);
+  return urls.newRelValsSpecific(que, date, flavor, arch, selectedStatus);
+};
+
+const getOtherTestUrl = ({ file }) => {
+  const linkParts = file.split('/').slice(4, 9);
+  return urls.showAddOnLogsUrls + linkParts.join('/') + '/addOnTests/';
+};
+
+const statusIcons = {
+  success: <FaCheck className="me-1" size={10} />,
+  danger: <FaTimes className="me-1" size={10} />,
+  warning: <FaExclamationTriangle className="me-1" size={10} />,
+  secondary: <FaQuestionCircle className="me-1" size={10} />,
+  info: <FaPlay className="me-1" size={10} />
+};
+
+const ComparisonTable = ({ data = [], releaseQue }) => {
+  const { getActiveArchsForQue = () => [], getColorsSchemeForQue = () => ({}) } = useShowArch();
+
+  const activeArchs = getActiveArchsForQue(releaseQue);
+  const archColorScheme = getColorsSchemeForQue(releaseQue);
+
+  const { que, date } = useMemo(() => {
+    if (data[0]) {
+      const [, q, , d] = getInfoFromRelease(data[0].release_name);
+      return { que: q, date: d };
     }
-};
+    return {};
+  }, [data]);
 
-const getRelValUrl = function (params) {
-    const {file, arch, ibName, selectedStatus} = params;
-    if (!file) {
-        // do nothing
-    } else if (file === 'not-ready') {
-        return urls.relVals + arch + ';' + ibName
-    } else {
-        const [ , que, flavor, date] = getInfoFromRelease(ibName);  // fullMatch, que, flavor, date
-        return urls.newRelValsSpecific(que, date, flavor, arch, selectedStatus );
-    }
-};
+  const archsByIb = useMemo(
+    () => getAllActiveArchitecturesFromIBGroupByFlavor(data, activeArchs),
+    [data, activeArchs]
+  );
 
-const getOtherTestUrl = function (params) {
-    const {file} = params;
-    const si = 4;
-    let link_parts = file.split('/');
-    link_parts = link_parts.slice(si, si + 5);
-    return urls.showAddOnLogsUrls + link_parts.join('/') + '/addOnTests/';
-};
+  const renderRowCells = ({ resultType, ifWarning, ifError, ifFailed, ifPassed, ifUnknown }) => {
+    return data.map((ib, pos) => {
+      const el = archsByIb[pos];
+      return (el?.archs || []).map(arch => {
+        const results = _.findWhere(ib[resultType] || [], { arch });
+        if (!results) return renderCell(<span className="text-muted">—</span>);
 
-class ComparisonTable extends Component {
-    static propTypes = {
-        data: PropTypes.array
-    };
-
-    constructor(props) {
-        super(props);
-        this.getArchSettings = this.getArchSettings.bind(this);
-        const {data, releaseQue} = props;
-        let  que,  date;
-        if (data[0]){
-            [, que, , date] = getInfoFromRelease( data[0].release_name);  // fullMatch, que, flavor, date
-            this.state = {date: date}
+        if (_.isEmpty(results)) {
+          return renderCell(
+            renderSphere({
+              status: 'secondary',
+              icon: <FaQuestionCircle />,
+              value: '?',
+              type: resultType,
+              details: { status: 'No data available' }
+            }) || <span className="text-muted">—</span>
+          );
         }
-        this.state = {
-            ibComparison: data,
-            que,
-            date,
-            archsByIb: getAllActiveArchitecturesFromIBGroupByFlavor(data, ShowArchStore.getActiveArchsForQue(releaseQue)),
-            releaseQue: releaseQue,
-            archColorScheme: ShowArchStore.getColorsSchemeForQue(releaseQue)
-        };
 
+        switch (results.passed) {
+          case true:
+          case "passed":
+            return ifPassed ? ifPassed(results, ib.release_name) : renderCell(renderSphere({
+              status: 'success',
+              icon: <FaCheck />,
+              value: results.details?.num_passed || '✓',
+              type: resultType,
+              details: results.details
+            }) || <span className="text-muted">—</span>);
+
+          case false:
+          case "error":
+            return ifError ? ifError(results, ib.release_name) : renderCell(renderSphere({
+              status: 'danger',
+              icon: <FaTimes />,
+              value: results.details?.num_errors || '✗',
+              type: resultType,
+              details: results.details
+            }) || <span className="text-muted">—</span>);
+
+          case "failed":
+            return ifFailed ? ifFailed(results, ib.release_name) : renderCell(renderSphere({
+              status: 'danger',
+              icon: <FaTimes />,
+              value: results.details?.num_fails || '!',
+              type: resultType,
+              details: results.details
+            }) || <span className="text-muted">—</span>);
+
+          case "warning":
+            return ifWarning ? ifWarning(results, ib.release_name) : renderCell(renderSphere({
+              status: 'warning',
+              icon: <FaExclamationTriangle />,
+              value: results.details?.num_warnings || '⚠',
+              type: resultType,
+              details: results.details
+            }) || <span className="text-muted">—</span>);
+
+          case "unknown":
+            return ifUnknown ? ifUnknown(arch, ib) : renderCell(renderSphere({
+              status: 'secondary',
+              icon: <FaQuestionCircle />,
+              value: ' ',
+              type: resultType,
+              details: { status: 'Unknown' }
+            }) || <span className="text-muted">—</span>);
+
+          default:
+            return renderCell(<span className="text-muted">—</span>);
+        }
+      });
+    });
+  };
+
+  const showGeneralResults = (
+    labelConfigArray = [],
+    getUrl,
+    urlParameter = '',
+    tooltipOptions = {}
+  ) => (result, ib) => {
+    const { details, done } = result;
+    if (!details) return renderCell(<span className="text-muted">—</span>);
+
+    const resultKeys = Object.keys(details);
+    let labelConfig = { value: 0, colorType: 'secondary' };
+
+    for (let el of labelConfigArray) {
+      el.groupFields.forEach(predicate => {
+        if (typeof predicate === "function") {
+          resultKeys.forEach(key => {
+            if (predicate(key)) labelConfig.value += details[key] * 1;
+          });
+        } else {
+          if (valueInTheList(resultKeys, predicate)) labelConfig.value += details[predicate] * 1;
+        }
+      });
+      if (labelConfig.value > 0) {
+        labelConfig.colorType = el.color;
+        break;
+      }
     }
 
-    componentWillMount() {
-        ShowArchStore.on("change", this.getArchSettings);
+    if (labelConfig.value === 0) return renderCell(<span className="text-muted">—</span>);
+    if (done === false) labelConfig.value = `${labelConfig.value}*`;
+
+    const status = labelConfig.colorType === 'danger' ? 'danger'
+      : labelConfig.colorType === 'warning' ? 'warning'
+      : labelConfig.colorType === 'success' ? 'success'
+      : 'secondary';
+
+    let resultType = 'Build';
+    if (getUrl === getOtherTestUrl) resultType = 'Other Tests';
+
+    const tooltipDetails = tooltipOptions.hideFile
+      ? removeKeysFromDetails(details, ['file'])
+      : details;
+
+    const cell = renderSphere({
+      status,
+      icon: statusIcons[status],
+      value: labelConfig.value,
+      details: tooltipDetails,
+      type: resultType,
+      link: getUrl({ file: result.file, arch: result.arch, ibName: ib, urlParameter })
+    });
+
+    return renderCell(cell || <span className="text-muted">—</span>);
+  };
+
+  const showRelValsResults = (labelConfigArray = [], getUrl) => (result, ib) => {
+    const { details, done } = result;
+    const labelConfig = checkLabelType(labelConfigArray, details) || { value: 0, colorType: "secondary" };
+
+    if (labelConfig.value === 0) return renderCell(<span className="text-muted">—</span>);
+    if (done === false) labelConfig.value += '*';
+
+    let selectedStatus = '';
+    switch (labelConfig.colorType) {
+      case "danger": selectedStatus = "&selectedStatus=failed"; break;
+      case "warning": selectedStatus = "&selectedFlavors=X&selectedStatus=failed&selectedStatus=known_failed"; break;
+      case "success": selectedStatus = "&selectedFlavors=X&selectedStatus=failed&selectedStatus=known_failed&selectedStatus=passed"; break;
+      default: break;
     }
 
-    componentWillUnmount() {
-        ShowArchStore.removeListener("change", this.getArchSettings);
-    }
+    const status = labelConfig.colorType === 'danger' ? 'danger'
+      : labelConfig.colorType === 'warning' ? 'warning'
+      : labelConfig.colorType === 'success' ? 'success'
+      : 'secondary';
 
-    getArchSettings() {
-        const {ibComparison, releaseQue} = this.state;
-        this.setState({
-            archsByIb: getAllActiveArchitecturesFromIBGroupByFlavor(ibComparison, ShowArchStore.getActiveArchsForQue(releaseQue)),
-            archColorScheme: ShowArchStore.getColorsSchemeForQue(releaseQue)
-        })
-    }
+    const cell = renderSphere({
+      status,
+      icon: statusIcons[status],
+      value: labelConfig.value,
+      details: details,
+      type: 'RelVal',
+      link: getUrl({ file: result.file, arch: result.arch, ibName: ib, selectedStatus })
+    });
 
-    renderRowCells({resultType, ifWarning, ifError, ifFailed, ifPassed, ifUnknown}) {
-        /**
-         * General purpose function, it will re-render row according to given config
-         * */
-        const {archsByIb, ibComparison} = this.state;
-        return ibComparison.map((ib, pos) => {
-            const el = archsByIb[pos];
-            // generate cell for each arch
-            return el.archs.map(arch => {
-                const results = _.findWhere(ib[resultType], {"arch": arch});
-                if (!results) {
-                    // if not found,
-                    return renderCell();
-                }
-                let defaultTooltipContent, defaultCellInfo = undefined;
-                if (_.isEmpty(results)) {
-                    defaultTooltipContent = <p>Results are unknown</p>;
-                    defaultCellInfo = renderLabel({
-                        colorType: 'default',
-                        glyphicon: 'glyphicon-question-sign',
-                        defaultTooltipContent
-                    });
-                    return renderCell(defaultCellInfo);
-                }
-                switch (results.passed) {
-                    case true:
-                    case "passed":
-                        defaultTooltipContent = <p>All good!</p>;
-                        defaultCellInfo = renderLabel(
-                            {
-                                colorType: 'success',
-                                glyphicon: 'glyphicon-ok-circle',
-                                tooltipContent: defaultTooltipContent
-                            }
-                        );
-                        return ifPassed ? ifPassed(results, ib.release_name) : renderCell(defaultCellInfo);
-                    case false:
-                    case "error":
-                        return ifError ? ifError(results, ib.release_name) : renderCell();
-                    case "failed":
-                        return ifFailed ? ifFailed(results, ib.release_name) : renderCell();
-                    case "warning":
-                        return ifWarning ? ifWarning(results, ib.release_name) : renderCell();
-                    case "unknown":
-                        defaultTooltipContent = <p>Results are unknown</p>;
-                        defaultCellInfo = renderLabel(
-                            {glyphicon: 'glyphicon-question-sign', tooltipContent: defaultTooltipContent}
-                        );
-                        return ifUnknown ? ifUnknown(arch, ib) : renderCell(defaultCellInfo);
-                    default:
-                        console.error("There is new value: " + results.passed);
-                        return renderCell();
-                }
-            })
-        })
-    }
+    return renderCell(cell || <span className="text-muted">—</span>);
+  };
 
-    renderRowCellsWithDefaultPreConfig({resultType, getUrl, showLabelConfig, urlParameter=''}) {
-        const showGeneralResults = this.showGeneralResults(showLabelConfig, getUrl, urlParameter);
-        const config = {
-            resultType: resultType,
-            ifPassed: function (details, ibName) {
-                let tooltipContent = <p><strong>All good!</strong> Click for more info.</p>;
-                let cellInfo = renderLabel(
-                    {
-                        colorType: 'success',
-                        glyphicon: 'glyphicon-ok-circle',
-                        tooltipContent,
-                        link: getUrl({"file": details.file, "arch": details.arch, "ibName": ibName, "urlParameter": urlParameter})
-                    }
-                );
-                return renderCell(cellInfo);
-            },
-            ifError: showGeneralResults,
-            ifFailed: showGeneralResults,
-            ifWarning: showGeneralResults
-        };
-        return this.renderRowCells(config);
-    }
+  const shouldShowRow = resultType => {
+    return data.reduce((sum, ib, pos) => {
+      const el = archsByIb[pos] || {};
+      const count = (el.archs || [])
+        .map(arch => _.findWhere(ib[resultType] || [], { arch }) ? 1 : 0)
+        .reduce((a, b) => a + b, 0);
+      return sum + count;
+    }, 0) > 0;
+  };
 
-    renderRowCellsDuplicateDictonaryConfig({resultType, getUrl, showLabelConfig, urlParameter=''}) {
-        const showGeneralResults = this.showGeneralResults(showLabelConfig, getUrl, urlParameter);
-        const config = {
-            resultType: resultType,
-            ifPassed: function (details, ibName) {
-                let tooltipContent = <p><strong>All good!</strong> Click for more info.</p>;
-                let cellInfo = renderLabel(
-                    {
-                        colorType: 'success',
-                        glyphicon: 'glyphicon-search',
-                        tooltipContent,
-                        link: getUrl(details.arch, ibName)
-                    }
-                );
-                return renderCell(cellInfo);
-            },
-            ifError: function (details, ibName) {
-                let tooltipContent = <p><strong>Duplicate dictionary found!</strong> Click for more info.</p>;
-                let cellInfo = renderLabel(
-                    {
-                        colorType: 'danger',
-                        glyphicon: 'glyphicon-search',
-                        tooltipContent,
-                        link: getUrl(details.arch, ibName)
-                    }
-                );
-                return renderCell(cellInfo);
-            },
-            ifFailed: showGeneralResults,
-            ifWarning: showGeneralResults
-        };
-        return this.renderRowCells(config);
-    }
+  return (
+    <div className="container-fluid px-0">
+      <div className="ib-table-frame">
+        <div
+          className="table-responsive ib-table-responsive"
+          style={{
+            minHeight: '400px',
+            borderRadius: '8px',
+            border: `1px solid ${THEME.borderDark}`,
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
+          <style>
+            {`
+              .table {
+                border-collapse: collapse !important;
+                width: 100% !important;
+                table-layout: auto !important;
+              }
 
-    renderRelVals({resultType, getUrl, showLabelConfig}) {
-        const showRelValsResults = this.showRelValsResults(showLabelConfig, getUrl);
-        const config = {
-            resultType: resultType,
-            ifPassed: showRelValsResults,
-            ifError: showRelValsResults,
-            ifFailed: showRelValsResults,
-            ifWarning: showRelValsResults
-        };
-        return this.renderRowCells(config);
-    }
+              .table > :not(caption) > * > * {
+                padding: 0.30rem 0.18rem !important;
+                border: 1px solid ${THEME.borderDark} !important;
+              }
 
-    showRelValsResults(showLabelConfig, getUrl) {
-        return function (result, ib) {
-            const {details, done} = result;
-            const resultKeys = Object.keys(details); //get all object properties name
+              .table thead th {
+                border: 1px solid ${THEME.borderDark} !important;
+                vertical-align: middle;
+              }
 
-            let labelConfig = checkLabelType(showLabelConfig, details);
-            if (done === false) {
-                labelConfig.value = '' + labelConfig.value + '*';
-            }
-            const tooltipContent = resultKeys.map(key => {
-                return <p key={uuid.v4()} >{key}: {details[key]}</p>
-            });
+              .table tbody tr:hover {
+                background-color: ${THEME.hover};
+              }
 
-            let selectedStatus;
-            switch (labelConfig.colorType){
-                case "danger":
-                    selectedStatus = "&selectedStatus=failed";
-                    break;
-                case "warning":
-                    selectedStatus = "&selectedFlavors=X&selectedStatus=failed&selectedStatus=known_failed";
-                    break;
-                case "success":
-                    selectedStatus = "&selectedFlavors=X&selectedStatus=failed&selectedStatus=known_failed&selectedStatus=passed";
-                    break;
-                default:
-                    console.error("wrong 'labelConfig.colorType' value in switch statement:" + labelConfig.colorType)
-            }
+              .name-column {
+                position: sticky;
+                left: 0;
+                background-color: ${THEME.light};
+                z-index: 10;
+                border-right: 2px solid ${THEME.borderDark} !important;
+                font-weight: 700;
+                width: 78px;
+                min-width: 78px;
+              }
 
-            return renderCell(renderLabel(
-                {
-                    colorType: labelConfig.colorType, value: labelConfig.value, tooltipContent,
-                    link: getUrl({"file": result.file, "arch": result.arch, "ibName": ib, "selectedStatus": selectedStatus })
-                })
-            );
+              .table thead tr:first-child th {
+                background: ${THEME.light};
+                border-bottom: 2px solid ${THEME.primary} !important;
+              }
 
-        };
-    }
+              .table thead tr:last-child th {
+                background: ${THEME.light};
+              }
 
-    showGeneralResults(showLabelConfig, getUrl, urlParameter) {
-        return function (result, ib) {
-            const {details, done} = result;
-            if  (! details ) {
-                console.error("empty 'details'object");
-                return renderCell()
-            }
-            const resultKeys = Object.keys(details); //get all object properties name
-            let labelConfig = {value: 0};
+              .custom-tooltip .tooltip-inner {
+                background-color: white;
+                color: ${THEME.text.primary};
+                border: 1px solid ${THEME.border};
+                box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+                max-width: 350px;
+                border-radius: 12px;
+                padding: 0;
+              }
 
-            for (let i = 0; i < showLabelConfig.length; i++) {
-                let el = showLabelConfig[i];
-                el.groupFields.forEach((predicate) => {
-                    if (typeof predicate === "function") {
-                        resultKeys.forEach(key => {
-                            if (predicate(key)) {
-                                labelConfig.value += details[key] * 1;
-                            }
-                        });
+              .custom-tooltip .tooltip-arrow::before {
+                border-top-color: white !important;
+              }
+
+              .arch-stack-item {
+                padding: 5px 10px;
+                color: white;
+                font-size: 0.85rem;
+                font-weight: 800;
+                text-align: center;
+                border-bottom: 1px solid rgba(255,255,255,0.2);
+                white-space: nowrap;
+                line-height: 1.1;
+              }
+              .arch-stack-item:last-child { border-bottom: none; }
+
+              .patch-badge {
+                margin-top: 6px;
+                display: flex;
+                justify-content: center;
+              }
+
+              .patch-badge-pill {
+                font-size: 0.75rem !important;
+                padding: 4px 10px !important;
+                border-radius: 999px !important;
+                font-weight: 900 !important;
+                letter-spacing: 0.3px;
+              }
+
+              .sphere-success svg {
+                color: #ffffff !important;
+                fill: #ffffff !important;
+              }
+              .enhanced-sphere svg {
+                fill: currentColor;
+              }
+            `}
+          </style>
+
+          <Table
+            striped={false}
+            bordered
+            hover
+            className="mb-0 align-middle"
+            style={{
+              fontSize: '0.78rem'
+            }}
+          >
+            <thead>
+              <tr>
+                <th className="name-column" rowSpan={2} style={{ verticalAlign: 'middle' }}>
+                  <div className="d-flex align-items-center justify-content-center h-100">
+                    <span className="fw-bold text-uppercase" style={{ fontSize: '0.8rem' }}>
+                      Type
+                    </span>
+                  </div>
+                </th>
+
+                {archsByIb.map((item) => item.archs?.length > 0 && (
+                  <th
+                    key={uuidv4()}
+                    colSpan={item.archs.length}
+                    style={{
+                      textAlign: 'center',
+                      padding: '6px 2px',
+                      backgroundColor: THEME.light
+                    }}
+                  >
+                    <div
+                      className="flavor-card"
+                      style={{
+                        background: FLAVOR_CARDS[0].bg,
+                        color: FLAVOR_CARDS[0].text,
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: '110px',
+                        fontSize: '0.82rem',
+                        fontWeight: 800,
+                        margin: '0 auto'
+                      }}
+                    >
+                      {getDisplayName(item.flavor)}
+                    </div>
+                  </th>
+                ))}
+              </tr>
+
+              <tr>
+                {archsByIb.map(item => (item.archs || []).map((arch) => {
+                  let patchOrFullBuild = '---';
+                  let labelType = 'secondary';
+                  let link = null;
+                  let isPatch = false;
+                  let baseTag = '';
+
+                  const { cmsdistTags, current_tag } = item;
+                  const cmsdistTag = cmsdistTags?.[arch];
+
+                  if (cmsdistTag && cmsdistTag !== "Not Found") {
+                    link = urls.commits + cmsdistTag;
+                    isPatch = checkIfItIsAPatch(current_tag, arch, cmsdistTag);
+                    if (isPatch) {
+                      baseTag = cmsdistTag.replace('IB/', '').replace(`/${arch}`, '');
+                      patchOrFullBuild = 'PATCH';
+                      labelType = 'warning';
                     } else {
-                        if (valueInTheList(resultKeys, predicate)) {
-                            labelConfig.value += details[predicate] * 1;
-                        }
+                      patchOrFullBuild = 'FULL BUILD';
+                      labelType = 'success';
                     }
-                });
-                if (labelConfig.value > 0) {
-                    labelConfig.colorType = el.color;
-                    break;
-                }
-            }
-            if (done === false) {
-                labelConfig.value = '' + labelConfig.value + '*';
-            }
-            const tooltipContent = resultKeys.map(key => {
-                return <p key={uuid.v4()} >{key}: {details[key]}</p>
-            });
-            return renderCell(renderLabel(
-                {
-                    colorType: labelConfig.colorType, value: labelConfig.value, tooltipContent,
-                    link: getUrl({"file": result.file, "arch": result.arch, "ibName": ib, "urlParameter": urlParameter })
-                })
-            );
+                  }
 
-        };
-    }
+                  const archParts = arch.split("_");
+                  const archStack = (
+                    <div className="arch-stack">
+                      {archParts.map((str, idx) => {
+                        const backgroundColor = archColorScheme[str] || THEME.secondary;
+                        return (
+                          <div key={idx} className="arch-stack-item" style={{ backgroundColor }}>
+                            <strong>{str}</strong>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
 
-    renderOtherTestResults({resultType, getUrl, showLabelConfig}) {
-        const showGeneralResults = this.showGeneralResults(showLabelConfig, getUrl);
-        const config = {
-            resultType: resultType,
-            ifPassed: function (details, ib) {
-                let tooltipContent = <p><strong>All good!</strong> Click for more info.</p>;
-                let cellInfo = renderLabel(
-                    {
-                        colorType: 'success',
-                        glyphicon: 'glyphicon-ok-circle',
-                        tooltipContent,
-                        link: getUrl({"file": details.file, "arch": details.arch, "ibName": ib})
-                    }
-                );
-                return renderCell(cellInfo);
-            },
-            ifError: function (details, ib) {
-                let tooltipContent = <p><strong>There are errors!</strong> Click for more info.</p>;
-                let cellInfo = renderLabel(
-                    {
-                        colorType: 'danger',
-                        glyphicon: 'glyphicon-remove-sign',
-                        tooltipContent,
-                        link: getUrl({"file": details.file, "arch": details.arch, "ibName": ib})
-                    }
-                );
-                return renderCell(cellInfo);
-            },
-            ifFailed: showGeneralResults,
-            ifWarning: showGeneralResults
-        };
-        return this.renderRowCells(config);
-    }
+                  const cellInner = (
+                    <>
+                      {archStack}
+                      {cmsdistTag && cmsdistTag !== "Not Found" && (
+                        <div className="patch-badge">
+                          <Badge bg={labelType} className="patch-badge-pill">
+                            {patchOrFullBuild}
+                          </Badge>
+                        </div>
+                      )}
+                    </>
+                  );
 
-    shouldShowRow(resultType){
-        /**
-         checks if there is at least 1 field to show
-         ibField - the row
-         */
-        const {archsByIb, ibComparison} = this.state;
-        let result  =  ibComparison.map((ib, pos) => {
-            const el = archsByIb[pos];
-            // generate cell for each arch
-            return el.archs.map(arch => {
-                const results = _.findWhere(ib[resultType], {"arch": arch});
-                if (!results) {
-                    // if not found,
-                    return 0
-                }
-                return 1;
-            }).reduce((total, int ) => total + int, 0);
-        }).reduce((total, int ) => total + int, 0);
-        return result  // 0 - false, 1 and more - true
-    }
+                  const cellContent = link ? (
+                    <OverlayTrigger
+                      placement="top"
+                      overlay={
+                        <Tooltip id={uuidv4()} className="custom-tooltip">
+                          <ArchTooltip cmsdistTag={cmsdistTag} isPatch={isPatch} baseTag={baseTag} />
+                        </Tooltip>
+                      }
+                      delay={tooltipDelayInMs}
+                    >
+                      <a href={link} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                        {cellInner}
+                      </a>
+                    </OverlayTrigger>
+                  ) : (
+                    <div>{cellInner}</div>
+                  );
 
-    render() {
-        const {archsByIb} = this.state;
-        console.log(archsByIb);
-        return (
-            <div className="table-responsive">
-                <Table striped={true} bordered={true} condensed={true} hover>
-                    <thead>
-                    <tr>
-                        <th className={'name-column'} rowSpan={2}/>
-                        {/* IB flavors row*/}
-                        {archsByIb.map(item => {
-                            if (item.archs.length > 0) {
-                                return <th key={uuid.v4()}
-                                           colSpan={item.archs.length}>{getDisplayName(item.flavor)}</th>
-                            }
-                            return null;
-                        })}
-                    </tr>
-                    <tr>
-                        {/* Arch names row */}
-                        {archsByIb.map(item => {
-                            return item.archs.map(arch => {
-                                const linkWrapper = (link, result) => {
-                                    return (
-                                        <a href={link} style={{color: 'blue', textDecoration: 'underline'}}>
-                                            {result}
-                                        </a>
-                                    )
-                                };
-                                const cellContent = () => {
-                                    return (
-                                        arch.split("_").map(str => {
-                                            const color = this.state.archColorScheme;
-                                            return (
-                                                <div style={{backgroundColor: color[str], paddingLeft: 6.3}}
-                                                     key={uuid.v4()}>
-                                                    <span style={{color: "white"}}>{" " + str}</span>
-                                                </div>
-                                            )
-                                        })
-                                    )
-                                };
-                                const checkIfItIsAPatch = (current_tag, architecture, tagName) => {
-                                    const intendedTagName1 = 'IB/'.concat(current_tag, '/', architecture);
-                                    const intendedTagName2 = 'ERR/'.concat(current_tag, '/', architecture);
-                                    return ( tagName !== intendedTagName1 && tagName !== intendedTagName2 );
-                                };
-                                let link, tooltipText;
-                                let patchOrFullBuild = '---';
-                                let labelType = 'default';
-                                let {cmsdistTags, current_tag} = item;
-                                let cmsdistTag = cmsdistTags[arch];
-                                if (cmsdistTag === "Not Found") {
-                                } else if (!cmsdistTag) {
-                                } else {
-                                    link = urls.commits + cmsdistTag;
-                                    if (checkIfItIsAPatch(current_tag, arch, cmsdistTag)) {
-                                        tooltipText = 'Used same cmsdist tag as ' + cmsdistTag.replace('IB/', '').replace('/' + arch, '');
-                                        patchOrFullBuild = 'Patch';
-                                    } else {
-                                        tooltipText = 'See cmsdist tag used for this build';
-                                        patchOrFullBuild = 'Full Build';
-                                        labelType = 'success';
-                                    }
-                                }
-                                return (
-                                    <th key={uuid.v4()}>
-                                        {(link) ? renderTooltip(linkWrapper(link, cellContent()), tooltipText) : cellContent()}
-                                        <Label bsStyle={labelType}> {patchOrFullBuild}</Label>
-                                    </th>
-                                );
-                            })
-                        })}
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {  this.shouldShowRow("builds") ?
-                        <tr>
-                        <td className={'name-column'}>
-                            <b>Builds</b>
-                        </td>
-                        {this.renderRowCellsWithDefaultPreConfig({
-                                resultType: 'builds',
-                                getUrl: getBuildOrUnitUrl,
-                                // first group will be showed as label,
-                                // if not found, then second group will be shown
-                                showLabelConfig: [
-                                    {
-                                        groupFields: [(key) => key.includes("Error")],
-                                        color: "danger"
-                                    },
-                                    {
-                                        groupFields: ["compWarning"],
-                                        color: "warning"
-                                    }
-                                ]
-                            }
-                        )}
-                        </tr>
-                    : null}
-                    {  this.shouldShowRow("utests") ?
-                        <tr>
-                            <td className={'name-column'}><b>Unit Tests</b></td>
-                            {this.renderRowCellsWithDefaultPreConfig({
-                                    resultType: 'utests',
-                                    getUrl: getBuildOrUnitUrl,
-                                    showLabelConfig: [{
-                                        groupFields: ["num_fails"],
-                                        color: "danger"
-                                    }],
-                                    urlParameter: '?utests'
-                                }
-                            )}
-                        </tr>
-                    : null}
-                    { this.shouldShowRow("relvals") ?
-                        <tr>
-                            <td className={'name-column'}>
-                                    <a href={urls.newRelVals(this.state.que, this.state.date)}> <b>RelVals </b> </a>
-                            </td>
-                            {this.renderRelVals({
-                                    resultType: 'relvals',
-                                    getUrl: getRelValUrl,
-                                    showLabelConfig: showLabelConfig.relvals
-                                }
-                            )}
-                        </tr>
-                    : null}
-                    { this.shouldShowRow("addons") ?
-                        <tr>
-                            <td className={'name-column'}><b>Other Tests</b></td>
-                            {this.renderOtherTestResults({
-                                    resultType: 'addons',
-                                    getUrl: getOtherTestUrl,
-                                    showLabelConfig: showLabelConfig.addons
-                                }
-                            )}
-                        </tr>
-                    : null}
-                    { this.shouldShowRow("dupDict") ?
-                        <tr>
-                            <td className={'name-column'}><b>Q/A</b></td>
-                            {this.renderRowCellsDuplicateDictonaryConfig({
-                                    resultType: 'dupDict',
-                                    getUrl: urls.q_a
-                                }
-                            )}
-                        </tr>
-                        : null}
-                    </tbody>
-                </Table>
-            </div>
-        )
-    }
+                  return (
+                    <th
+                      key={uuidv4()}
+                      style={{
+                        padding: '3px 2px',
+                        backgroundColor: THEME.light,
+                        minWidth: '72px'
+                      }}
+                    >
+                      {cellContent}
+                    </th>
+                  );
+                }))}
+              </tr>
+            </thead>
 
-}
+            <tbody>
+              {shouldShowRow("builds") && (
+                <tr>
+                  <td className="name-column fw-semibold">Builds</td>
+                  {renderRowCells({
+                    resultType: 'builds',
+                    ifPassed: (details, ibName) => renderCell(renderSphere({
+                      status: 'success',
+                      icon: <FaCheck />,
+                      value: ' ',
+                      type: 'Builds',
+                      details:{},
+                      link: getBuildOrUnitUrl({ file: details.file, arch: details.arch, ibName })
+                    })),
+                    ifError: showGeneralResults([
+                      { groupFields: [(key) => key.includes("Error")], color: "danger" },
+                      { groupFields: ["compWarning"], color: "warning" }
+                    ], getBuildOrUnitUrl),
+                    ifFailed: showGeneralResults([
+                      { groupFields: [(key) => key.includes("Error")], color: "danger" },
+                      { groupFields: ["compWarning"], color: "warning" }
+                    ], getBuildOrUnitUrl),
+                    ifWarning: showGeneralResults([
+                      { groupFields: [(key) => key.includes("Error")], color: "danger" },
+                      { groupFields: ["compWarning"], color: "warning" }
+                    ], getBuildOrUnitUrl)
+                  })}
+                </tr>
+              )}
+
+              {shouldShowRow("utests") && (
+                <tr>
+                  <td className="name-column fw-semibold">Unit</td>
+                  {renderRowCells({
+                    resultType: 'utests',
+                    ifPassed: (details, ibName) => renderCell(renderSphere({
+                      status: 'success',
+                      icon: <FaCheck />,
+                      value: details.details?.num_passed || ' ',
+                      type: 'Unit Tests',
+                      details: {}, 
+                      link: getBuildOrUnitUrl({
+                        file: details.file,
+                        arch: details.arch,
+                        ibName,
+                        urlParameter: '?utests'
+                      })
+                    })),
+                    ifError: showGeneralResults([{ groupFields: ["num_errors"], color: "danger" }], getBuildOrUnitUrl, '?utests'),
+                    ifFailed: showGeneralResults([{ groupFields: ["num_fails"], color: "danger" }], getBuildOrUnitUrl, '?utests'),
+                    ifWarning: showGeneralResults([{ groupFields: ["num_warnings"], color: "warning" }], getBuildOrUnitUrl, '?utests')
+                  })}
+                </tr>
+              )}
+
+              {shouldShowRow("relvals") && (
+                <tr>
+                  <td className="name-column fw-semibold">
+                    <a href={urls.newRelVals(que, date)} className="text-decoration-none" style={{ color: THEME.primary }}>
+                      RelVal
+                    </a>
+                  </td>
+                  {renderRowCells({
+                    resultType: 'relvals',
+                    ifPassed: showRelValsResults(showLabelConfig.relvals || [], getRelValUrl),
+                    ifError: showRelValsResults(showLabelConfig.relvals || [], getRelValUrl),
+                    ifFailed: showRelValsResults(showLabelConfig.relvals || [], getRelValUrl),
+                    ifWarning: showRelValsResults(showLabelConfig.relvals || [], getRelValUrl)
+                  })}
+                </tr>
+              )}
+
+              {shouldShowRow("addons") && (
+                <tr>
+                  <td className="name-column fw-semibold">Other</td>
+                  {renderRowCells({
+                    resultType: 'addons',
+                    ifPassed: (details, ibName) => renderCell(renderSphere({
+                      status: 'success',
+                      icon: <FaCheck />,
+                      value: ' ',
+                      type: 'Other Tests',
+                      details: removeKeysFromDetails(details, ['file']),
+                      link: getOtherTestUrl({ file: details.file, arch: details.arch, ibName })
+                    })),
+                    ifError: (details, ibName) => renderCell(renderSphere({
+                      status: 'danger',
+                      icon: <FaTimes />,
+                      value: ' ',
+                      type: 'Other Tests',
+                      details: removeKeysFromDetails(details, ['file']),
+                      link: getOtherTestUrl({ file: details.file, arch: details.arch, ibName })
+                    })),
+                    ifFailed: showGeneralResults(showLabelConfig.addons || [], getOtherTestUrl, '', { hideFile: true }),
+                    ifWarning: showGeneralResults(showLabelConfig.addons || [], getOtherTestUrl, '', { hideFile: true })
+                  })}
+                </tr>
+              )}
+
+              {shouldShowRow("dupDict") && (
+                <tr>
+                  <td className="name-column fw-semibold">Q/A</td>
+                  {renderRowCells({
+                    resultType: 'dupDict',
+                    ifPassed: (details, ibName) => renderCell(renderSphere({
+                      status: 'success',
+                      icon: <FaCheck />,
+                      value: ' ',
+                      type: 'Q/A',
+                      details: { status: 'No duplicates found' },
+                      link: urls.q_a(details.arch, ibName)
+                    })),
+                    ifError: (details, ibName) => renderCell(renderSphere({
+                      status: 'danger',
+                      icon: <FaTimes />,
+                      value: '!',
+                      type: 'Q/A',
+                      details: { status: 'Duplicate found' },
+                      link: urls.q_a(details.arch, ibName)
+                    })),
+                    ifFailed: showGeneralResults(showLabelConfig.dupDict || [], urls.q_a),
+                    ifWarning: showGeneralResults(showLabelConfig.dupDict || [], urls.q_a)
+                  })}
+                </tr>
+              )}
+            </tbody>
+          </Table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+ComparisonTable.propTypes = {
+  data: PropTypes.array.isRequired,
+  releaseQue: PropTypes.string.isRequired
+};
 
 export default ComparisonTable;

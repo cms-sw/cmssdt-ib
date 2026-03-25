@@ -26,7 +26,7 @@ export const showLabelConfig = {
                 "miscError",
                 "scram errors"
             ],
-            color: "danger" // class to give bootstrap color
+            color: "danger" 
         },
         {
             groupFields: ["known_failed"],
@@ -488,8 +488,7 @@ export const config = {
                 if ( _.isEmpty(result)) {
                     return STATUS_ENUM.not_found
                 }
-                // the assumption here is that result is a list of object which can only have 1 element
-                // (originally this field was used in the table)
+
                 let result_element = result[0];
                 if (result_element.passed === STATUS_ENUM.passed){
                     return STATUS_ENUM.passed;
@@ -537,8 +536,7 @@ export const config = {
                 if ( _.isEmpty(result)) {
                     return STATUS_ENUM.not_found
                 }
-                // the assumption here is that result is a list of object which can only have 1 element
-                // (originally this field was used in the table)
+
                 let result_element = result[0];
                 if (result_element.passed === STATUS_ENUM.passed){
                     return STATUS_ENUM.passed;
@@ -585,8 +583,7 @@ export const config = {
                 if ( _.isEmpty(result)) {
                     return STATUS_ENUM.not_found
                 }
-                // the assumption here is that result is a list of object which can only have 1 element
-                // (originally this field was used in the table)
+
                 let result_element = result[0];
                 if (result_element.passed === STATUS_ENUM.passed){
                     return STATUS_ENUM.passed;

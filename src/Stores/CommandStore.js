@@ -1,68 +1,112 @@
-import {EventEmitter} from "events";
-import dispatcher from "../dispatcher";
-import {getMultipleFiles} from "../Utils/ajax";
+import React, { createContext, useReducer, useContext } from "react";
+import { getMultipleFiles } from "../Utils/ajax";
 import * as config from "../relValConfig";
 
-const {urls} = config;
+const { urls } = config;
 
-/**
- * Store keeps mapping of RelVal exitcode to its name
- */
-class CommandStore extends EventEmitter {
-    // TODO show statistics can be calculated here
-    constructor(props) {
-        super(props);
-        this.setMaxListeners(50); // The more tables in the page are, the more listeners I need. Looks like its cleaning up properly on unmount, but this was not the right approach
-        this.commandMap = {};
-    }
+// -----------------------------
+// Initial State
+// -----------------------------
+const initialState = {
+  commandMap: {}, // maps hashCode to workflow data
+};
 
-    _getData(hashCodeList) {
-        const cmdUrlList = hashCodeList.map(i => {
-            const digit1 = i.charAt(0);
-            const digitRest = i.substring(1, i.length);
-            return urls.relValCmd(digit1, digitRest)
-        });
-        getMultipleFiles({
-            fileUrlList: cmdUrlList,
-            onSuccessCallback: function (responseList) {
-                for (let i = 0; i < hashCodeList.length; i++) {
-                    const workflow = responseList[i].data;
-                    this.commandMap[hashCodeList[i]] = workflow;
-                }
-                this.emit("change");
-            }.bind(this)
-        });
-    }
+// -----------------------------
+// Action Types
+// -----------------------------
+const CommandActionTypes = {
+  SET_COMMANDS: "SET_COMMANDS",
+};
 
-    getWorkFlow(hashcode) {
-        return this.getWorkFlowList([hashcode])
-    }
-
-    getWorkFlowList(hashCodeList) {
-        let loadedCmd = [];
-        let notLoadedCmd = [];
-        for (let i = 0; i < hashCodeList.length; i++) {
-            const hashcode = hashCodeList[i];
-            if (!hashcode) {
-                loadedCmd[i] = {} // empty object as placeholder
-            } else if (!(hashcode in this.commandMap)) {
-                notLoadedCmd.push(hashcode);
-                loadedCmd[i] = i;
-            } else {
-                loadedCmd[i] = this.commandMap[hashcode];
-            }
-        }
-        if (notLoadedCmd.length > 0) {
-            this._getData(notLoadedCmd)
-        }
-        return loadedCmd;
-    }
-    handleActions(action) {
-        switch (action.type) {
-        }
-    }
+// -----------------------------
+// Reducer
+// -----------------------------
+function commandReducer(state, action) {
+  switch (action.type) {
+    case CommandActionTypes.SET_COMMANDS:
+      return {
+        ...state,
+        commandMap: { ...state.commandMap, ...action.payload },
+      };
+    default:
+      return state;
+  }
 }
 
-const commandStore = new CommandStore();
-dispatcher.register(commandStore.handleActions.bind(commandStore));
-export default commandStore;
+// -----------------------------
+// Context
+// -----------------------------
+const CommandContext = createContext();
+
+// -----------------------------
+// Provider Component
+// -----------------------------
+export function CommandProvider({ children }) {
+  const [state, dispatch] = useReducer(commandReducer, initialState);
+
+  // -----------------------------
+  // Methods 
+  // -----------------------------
+  const _getData = (hashCodeList) => {
+    const cmdUrlList = hashCodeList.map((i) => {
+      const digit1 = i.charAt(0);
+      const digitRest = i.substring(1);
+      return urls.relValCmd(digit1, digitRest);
+    });
+
+    getMultipleFiles({
+      fileUrlList: cmdUrlList,
+      onSuccessCallback: function (responseList) {
+        const newCommands = {};
+        for (let i = 0; i < hashCodeList.length; i++) {
+          if (!responseList[i]) {
+            console.warn(`CommandContext: responseList[${i}] is null`);
+            continue;
+          }
+          newCommands[hashCodeList[i]] = responseList[i].data;
+        }
+        dispatch({ type: CommandActionTypes.SET_COMMANDS, payload: newCommands });
+      },
+    });
+  };
+
+  const getWorkFlowList = (hashCodeList) => {
+    const loadedCmd = [];
+    const notLoadedCmd = [];
+
+    for (let i = 0; i < hashCodeList.length; i++) {
+      const hashcode = hashCodeList[i];
+      if (!hashcode) {
+        loadedCmd[i] = {};
+      } else if (!(hashcode in state.commandMap)) {
+        notLoadedCmd.push(hashcode);
+        loadedCmd[i] = i;
+      } else {
+        loadedCmd[i] = state.commandMap[hashcode];
+      }
+    }
+
+    if (notLoadedCmd.length > 0) {
+      _getData(notLoadedCmd);
+    }
+
+    return loadedCmd;
+  };
+
+  const getWorkFlow = (hashcode) => getWorkFlowList([hashcode])[0];
+
+  return (
+    <CommandContext.Provider
+      value={{ state, getWorkFlowList, getWorkFlow }}
+    >
+      {children}
+    </CommandContext.Provider>
+  );
+}
+
+// -----------------------------
+// Custom Hook
+// -----------------------------
+export function useCommand() {
+  return useContext(CommandContext);
+}

@@ -1,5 +1,3 @@
-import {EventEmitter} from "events";
-import dispatcher from "../dispatcher";
 import ShowArchActionTypes from "../Actions/ShowArchActionTypes";
 import { config } from "../config";
 import {extractInfoFromArchs} from "../Utils/processing";
@@ -13,7 +11,7 @@ const {urls, colorCoding} = config;
 class ShowArchStore extends EventEmitter {
     constructor() {
         super();
-        this.setMaxListeners(50); // The more tables in the page are, the more listeners I need. Looks like its cleaning up properly on unmount, but this was not the right approach
+        this.setMaxListeners(50); 
         this.emptyConfig = {
             'os': [], 'cpu': [], 'compiler': []
         };
@@ -161,5 +159,4 @@ class ShowArchStore extends EventEmitter {
 }
 
 const showArchStore = new ShowArchStore();
-dispatcher.register(showArchStore.handleActions.bind(showArchStore));
 export default showArchStore;

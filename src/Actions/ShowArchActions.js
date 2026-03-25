@@ -1,26 +1,29 @@
-import dispatcher from "../dispatcher";
-import ShowArchActionTypes from "./ShowArchActionTypes"
+// ShowArchActions.js
+import { useShowArch, ShowArchActionTypes } from "../context/ShowArchContext";
 
-export function loadArchs() {
-    dispatcher.dispatch({
-        type: ShowArchActionTypes.LOAD_ARCHS,
-    })
-}
+// ✅ Custom hook
+export function useShowArchActions() {
+  const { state, dispatch } = useShowArch();
 
-export function toggleArch(id) {
-    dispatcher.dispatch({
-        type: ShowArchActionTypes.TOGGLE_ARCH,
-        id: id
-    })
-}
+  const loadArchs = (archList) => {
+    dispatch({ type: ShowArchActionTypes.LOAD_ARCHS, payload: archList });
+  };
 
-export function setActiveArchs(values, field, releaseQue) {
-    dispatcher.dispatch({
-        type: ShowArchActionTypes.SET_ACTIVE_ARCHS,
-        values: {
-            activeValues: values,
-            field,
-            releaseQue
-        },
-    })
+  const toggleArch = (id) => {
+    dispatch({ type: ShowArchActionTypes.TOGGLE_ARCH, id });
+  };
+
+  const setActiveArchs = (values, field, releaseQue) => {
+    dispatch({
+      type: ShowArchActionTypes.SET_ACTIVE_ARCHS,
+      values: { activeValues: values, field, releaseQue },
+    });
+  };
+
+  return {
+    state,
+    loadArchs,
+    toggleArch,
+    setActiveArchs,
+  };
 }
