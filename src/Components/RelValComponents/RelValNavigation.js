@@ -511,7 +511,7 @@ const RelValNavigation = ({
         </Modal.Footer>
       </Modal>
 
-      <style jsx>{`
+      <style>{`
         .legend-modal .modal-content {
           border: none;
           border-radius: 16px;

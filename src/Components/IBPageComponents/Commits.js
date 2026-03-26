@@ -1,4 +1,3 @@
-// Commits.jsx
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import {
@@ -21,6 +20,7 @@ import {
   getPreviousIbTag
 } from "../../Utils/processing";
 import { config } from "../../config";
+import { getCacheItem, setCacheItem } from "../../Utils/cache";
 import {
   FaCodeBranch,
   FaGitAlt,
@@ -39,6 +39,17 @@ import {
 } from "react-icons/fa";
 
 const { githubCompareTags, githubRepo, githubRepoTag } = config.urls;
+
+/** TTLs */
+const LABELS_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const PR_JSON_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
+/** -------------------- Global shared caches -------------------- **/
+let globalCmsswLabelsCache = null;
+let globalCmsswLabelsPromise = null;
+
+const globalPrJsonCache = {};
+const globalPrJsonPromises = {};
 
 /** Neutral / professional palette */
 const THEME = {
@@ -123,7 +134,6 @@ const styles = {
     fontSize: "0.8rem",
     color: THEME.text.primary
   },
-
   headerPillsWrap: {
     display: "flex",
     alignItems: "center",
@@ -146,7 +156,6 @@ const styles = {
     whiteSpace: "nowrap",
     lineHeight: 1
   },
-
   navTabsWrap: {
     background: THEME.surfaceMuted,
     borderBottom: `1px solid ${THEME.border}`,
@@ -170,7 +179,6 @@ const styles = {
     padding: "1rem",
     background: THEME.surface
   },
-
   badge: {
     padding: "0.22rem 0.55rem",
     borderRadius: "999px",
@@ -178,7 +186,6 @@ const styles = {
     fontWeight: 800,
     letterSpacing: "0.02em"
   },
-
   cmsdistSearchWrap: {
     padding: "10px 10px 8px 10px",
     position: "sticky",
@@ -210,7 +217,6 @@ const styles = {
     backgroundColor: "transparent",
     transition: "background 0.15s ease"
   },
-
   prRowWrap: {
     border: `1px solid ${THEME.border}`,
     borderRadius: "10px",
@@ -299,6 +305,14 @@ function getPrJsonUrl(seriesKey) {
 
 function getCmsswLabelsUrl() {
   return "/SDT/public/cms-sw.github.io/data/cmssw_labels.json";
+}
+
+function getLabelsStorageKey() {
+  return "cmssw_labels_json";
+}
+
+function getPrJsonStorageKey(seriesKey) {
+  return `pr_json_${seriesKey}`;
 }
 
 function getRepoKey(repo) {
@@ -517,7 +531,6 @@ function renderComparisonLink(repo, startTag, endTag) {
   );
 }
 
-// -------------------- PR Labels --------------------
 const PRLabels = ({ pr, cmsswLabelsMap }) => {
   const labels = Array.isArray(pr.labels) ? pr.labels : [];
   if (labels.length === 0 || !cmsswLabelsMap) return null;
@@ -951,7 +964,6 @@ const GitHubPreviewContent = ({
   );
 };
 
-// -------------------- renderCommits --------------------
 function renderCommits(
   mergedPrs,
   previousIBTag,
@@ -1121,12 +1133,10 @@ function renderCommits(
   );
 }
 
-// -------------------- Main class --------------------
 class Commits extends Component {
   constructor(props) {
     super(props);
     this.toggleLoaderTimeout = null;
-    this.prJsonPromises = {};
 
     this.state = {
       commitPanelProps: props.commitPanelProps || {},
@@ -1138,7 +1148,7 @@ class Commits extends Component {
       prJsonCache: {},
       prJsonLoading: {},
       prJsonErrors: {},
-      cmsswLabelsMap: {},
+      cmsswLabelsMap: globalCmsswLabelsCache || getCacheItem(getLabelsStorageKey()) || {},
       cmsswLabelsLoading: false,
       cmsswLabelsError: null,
       previewPr: null,
@@ -1166,8 +1176,8 @@ class Commits extends Component {
     this.loadPrJsonForActiveTab(this.state.activeTabKey);
   }
 
-  componentDidUpdate(prevProps, prevState) {
-    if (prevState.ibComparison !== this.state.ibComparison) {
+  componentDidUpdate(prevProps) {
+    if (prevProps.data !== this.props.data && this.state.expanded) {
       this.loadPrJsonForActiveTab(this.state.activeTabKey);
     }
 
@@ -1224,12 +1234,84 @@ class Commits extends Component {
   loadPrJsonForSeriesKey = async (seriesKey) => {
     if (!seriesKey) return null;
 
-    if (this.state.prJsonCache[seriesKey]) {
-      return this.state.prJsonCache[seriesKey];
+    const localStorageKey = getPrJsonStorageKey(seriesKey);
+    const storedData = getCacheItem(localStorageKey);
+
+    if (globalPrJsonCache[seriesKey]) {
+      this.setState((prev) => ({
+        prJsonCache: {
+          ...prev.prJsonCache,
+          [seriesKey]: globalPrJsonCache[seriesKey]
+        },
+        prJsonLoading: {
+          ...prev.prJsonLoading,
+          [seriesKey]: false
+        },
+        prJsonErrors: {
+          ...prev.prJsonErrors,
+          [seriesKey]: null
+        }
+      }));
+      return globalPrJsonCache[seriesKey];
     }
 
-    if (this.prJsonPromises[seriesKey]) {
-      return this.prJsonPromises[seriesKey];
+    if (storedData) {
+      globalPrJsonCache[seriesKey] = storedData;
+      this.setState((prev) => ({
+        prJsonCache: {
+          ...prev.prJsonCache,
+          [seriesKey]: storedData
+        },
+        prJsonLoading: {
+          ...prev.prJsonLoading,
+          [seriesKey]: false
+        },
+        prJsonErrors: {
+          ...prev.prJsonErrors,
+          [seriesKey]: null
+        }
+      }));
+      return storedData;
+    }
+
+    if (globalPrJsonPromises[seriesKey]) {
+      this.setState((prev) => ({
+        prJsonLoading: {
+          ...prev.prJsonLoading,
+          [seriesKey]: true
+        },
+        prJsonErrors: {
+          ...prev.prJsonErrors,
+          [seriesKey]: null
+        }
+      }));
+
+      try {
+        const data = await globalPrJsonPromises[seriesKey];
+        this.setState((prev) => ({
+          prJsonCache: {
+            ...prev.prJsonCache,
+            [seriesKey]: data
+          },
+          prJsonLoading: {
+            ...prev.prJsonLoading,
+            [seriesKey]: false
+          }
+        }));
+        return data;
+      } catch (error) {
+        this.setState((prev) => ({
+          prJsonErrors: {
+            ...prev.prJsonErrors,
+            [seriesKey]: error.message
+          },
+          prJsonLoading: {
+            ...prev.prJsonLoading,
+            [seriesKey]: false
+          }
+        }));
+        return null;
+      }
     }
 
     this.setState((prev) => ({
@@ -1243,7 +1325,7 @@ class Commits extends Component {
       }
     }));
 
-    this.prJsonPromises[seriesKey] = fetch(getPrJsonUrl(seriesKey))
+    globalPrJsonPromises[seriesKey] = fetch(getPrJsonUrl(seriesKey))
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Failed to load ${seriesKey}.json: ${response.status}`);
@@ -1251,63 +1333,122 @@ class Commits extends Component {
         return response.json();
       })
       .then((data) => {
-        this.setState((prev) => ({
-          prJsonCache: {
-            ...prev.prJsonCache,
-            [seriesKey]: data
-          },
-          prJsonLoading: {
-            ...prev.prJsonLoading,
-            [seriesKey]: false
-          }
-        }));
+        globalPrJsonCache[seriesKey] = data;
+        setCacheItem(localStorageKey, data, PR_JSON_TTL_MS);
         return data;
       })
-      .catch((error) => {
-        this.setState((prev) => ({
-          prJsonErrors: {
-            ...prev.prJsonErrors,
-            [seriesKey]: error.message
-          },
-          prJsonLoading: {
-            ...prev.prJsonLoading,
-            [seriesKey]: false
-          }
-        }));
-        return null;
-      })
       .finally(() => {
-        delete this.prJsonPromises[seriesKey];
+        delete globalPrJsonPromises[seriesKey];
       });
 
-    return this.prJsonPromises[seriesKey];
+    try {
+      const data = await globalPrJsonPromises[seriesKey];
+      this.setState((prev) => ({
+        prJsonCache: {
+          ...prev.prJsonCache,
+          [seriesKey]: data
+        },
+        prJsonLoading: {
+          ...prev.prJsonLoading,
+          [seriesKey]: false
+        }
+      }));
+      return data;
+    } catch (error) {
+      this.setState((prev) => ({
+        prJsonErrors: {
+          ...prev.prJsonErrors,
+          [seriesKey]: error.message
+        },
+        prJsonLoading: {
+          ...prev.prJsonLoading,
+          [seriesKey]: false
+        }
+      }));
+      return null;
+    }
   };
 
   loadCmsswLabels = async () => {
-    if (Object.keys(this.state.cmsswLabelsMap || {}).length > 0) return;
+    const storedLabels = getCacheItem(getLabelsStorageKey());
+
+    if (globalCmsswLabelsCache) {
+      this.setState({
+        cmsswLabelsMap: globalCmsswLabelsCache,
+        cmsswLabelsLoading: false,
+        cmsswLabelsError: null
+      });
+      return globalCmsswLabelsCache;
+    }
+
+    if (storedLabels) {
+      globalCmsswLabelsCache = storedLabels;
+      this.setState({
+        cmsswLabelsMap: storedLabels,
+        cmsswLabelsLoading: false,
+        cmsswLabelsError: null
+      });
+      return storedLabels;
+    }
+
+    if (globalCmsswLabelsPromise) {
+      this.setState({
+        cmsswLabelsLoading: true,
+        cmsswLabelsError: null
+      });
+
+      try {
+        const data = await globalCmsswLabelsPromise;
+        this.setState({
+          cmsswLabelsMap: data || {},
+          cmsswLabelsLoading: false,
+          cmsswLabelsError: null
+        });
+        return data;
+      } catch (error) {
+        this.setState({
+          cmsswLabelsError: error.message,
+          cmsswLabelsLoading: false
+        });
+        return null;
+      }
+    }
 
     this.setState({
       cmsswLabelsLoading: true,
       cmsswLabelsError: null
     });
 
+    globalCmsswLabelsPromise = fetch(getCmsswLabelsUrl())
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to load cmssw_labels.json: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        globalCmsswLabelsCache = data || {};
+        setCacheItem(getLabelsStorageKey(), globalCmsswLabelsCache, LABELS_TTL_MS);
+        return globalCmsswLabelsCache;
+      })
+      .finally(() => {
+        globalCmsswLabelsPromise = null;
+      });
+
     try {
-      const response = await fetch(getCmsswLabelsUrl());
-      if (!response.ok) {
-        throw new Error(`Failed to load cmssw_labels.json: ${response.status}`);
-      }
-
-      const data = await response.json();
-
+      const data = await globalCmsswLabelsPromise;
       this.setState({
         cmsswLabelsMap: data || {},
-        cmsswLabelsLoading: false
+        cmsswLabelsLoading: false,
+        cmsswLabelsError: null
       });
+      return data;
     } catch (error) {
       this.setState({
         cmsswLabelsError: error.message,
         cmsswLabelsLoading: false
       });
+      return null;
     }
   };
 
@@ -1343,7 +1484,8 @@ class Commits extends Component {
     let previewError = null;
 
     try {
-      let prJsonData = seriesKey ? this.state.prJsonCache[seriesKey] : null;
+      let prJsonData =
+        seriesKey ? (this.state.prJsonCache[seriesKey] || globalPrJsonCache[seriesKey]) : null;
 
       if (!prJsonData && seriesKey) {
         prJsonData = await this.loadPrJsonForSeriesKey(seriesKey);
@@ -1489,7 +1631,7 @@ class Commits extends Component {
       const currentTag = getCurrentIbTag(ib);
       const previousTag = getPreviousIbTag(ib);
       const seriesKey = getSeriesKeyFromTag(currentTag || previousTag);
-      const prJsonData = seriesKey ? prJsonCache[seriesKey] : null;
+      const prJsonData = seriesKey ? (prJsonCache[seriesKey] || globalPrJsonCache[seriesKey]) : null;
 
       const cmsswTabKey = `cmssw-${pos}`;
 
