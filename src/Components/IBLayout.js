@@ -6,25 +6,27 @@ import { config } from '../config';
 import Navigation from "./Navigation";
 import TogglesShowArchs from "./TogglesShowArchs";
 import { getMultipleFiles } from "../Utils/ajax";
-import { useShowArch } from "../context/ShowArchContext"; 
+import { useShowArch } from "../context/ShowArchContext";
 
 const { urls } = config;
 
+// Global cache for already loaded IB json files
+const ibDataCache = {};
 
-const IBGroupsWithArch = (props) => {
+const IBGroupsWithArch = React.memo((props) => {
     const { getActiveArchsForQue } = useShowArch();
     const activeArchs = getActiveArchsForQue(props.releaseQue);
-    
-    console.log('🔵 IBGroupsWithArch - releaseQue:', props.releaseQue);
-    console.log('🔵 IBGroupsWithArch - activeArchs:', activeArchs);
-    console.log('🔵 IBGroupsWithArch - data length:', props.data?.length);
-    
+
     return <IBGroups {...props} activeArchs={activeArchs} />;
-};
+});
 
 class IBLayout extends Component {
     constructor(props) {
         super(props);
+
+        this.boundGetNavigationHeight = this.getNavigationHeight.bind(this);
+        this.lastRequestedIbListSignature = "";
+
         this.state = {
             nameList: [],
             nameListToShow: [],
@@ -38,7 +40,7 @@ class IBLayout extends Component {
 
     componentDidMount() {
         this.updateState(this.props);
-        window.addEventListener('resize', this.getNavigationHeight.bind(this));
+        window.addEventListener('resize', this.boundGetNavigationHeight);
         this.getNavigationHeight();
     }
 
@@ -49,42 +51,121 @@ class IBLayout extends Component {
     }
 
     componentWillUnmount() {
-        window.removeEventListener('resize', this.getNavigationHeight.bind(this));
+        window.removeEventListener('resize', this.boundGetNavigationHeight);
     }
 
     updateState(props) {
         const releaseQue = props.params?.prefix || "";
         const structure = props.structure || {};
         const IbFlavorList = _.find(structure, (val, key) => key === releaseQue) || [];
-        this.setState({ nameList: IbFlavorList, releaseQue });
-        this.getData(IbFlavorList);
+
+        this.setState(
+            (prevState) => {
+                const nextState = {};
+                let hasChanges = false;
+
+                if (prevState.releaseQue !== releaseQue) {
+                    nextState.releaseQue = releaseQue;
+                    hasChanges = true;
+                }
+
+                if (prevState.nameList !== IbFlavorList) {
+                    nextState.nameList = IbFlavorList;
+                    hasChanges = true;
+                }
+
+                return hasChanges ? nextState : null;
+            },
+            () => {
+                this.getData(IbFlavorList);
+            }
+        );
     }
 
     getData(ibList) {
-        if (!ibList || ibList.length === 0) return;
-        
+        if (!ibList || ibList.length === 0) {
+            if (this.state.dataList.length > 0) {
+                this.setState({ dataList: [] });
+            }
+            return;
+        }
+
+        const listSignature = JSON.stringify(ibList);
+        if (this.lastRequestedIbListSignature === listSignature) {
+            return;
+        }
+        this.lastRequestedIbListSignature = listSignature;
+
+        const cachedData = [];
+        const missingNames = [];
+
+        ibList.forEach((name) => {
+            if (ibDataCache[name]) {
+                cachedData.push(ibDataCache[name]);
+            } else {
+                missingNames.push(name);
+            }
+        });
+
+        if (missingNames.length === 0) {
+            this.setState((prevState) => {
+                const sameLength = prevState.dataList.length === cachedData.length;
+                const sameRefOrder = sameLength && prevState.dataList.every((item, index) => item === cachedData[index]);
+
+                if (sameRefOrder) return null;
+                return { dataList: cachedData };
+            });
+            return;
+        }
+
         getMultipleFiles({
-            fileUrlList: ibList.map(name => urls.dataDir + name + '.json'),
+            fileUrlList: missingNames.map((name) => urls.dataDir + name + '.json'),
             onSuccessCallback: (responsesList) => {
-                const data = responsesList.filter(r => r && r.data).map(r => r.data);
-                this.setState({ dataList: data });
+                responsesList.forEach((response, index) => {
+                    const name = missingNames[index];
+                    if (response && response.data) {
+                        ibDataCache[name] = response.data;
+                    }
+                });
+
+                const mergedData = ibList
+                    .map((name) => ibDataCache[name])
+                    .filter((item) => item);
+
+                this.setState((prevState) => {
+                    const sameLength = prevState.dataList.length === mergedData.length;
+                    const sameRefOrder = sameLength && prevState.dataList.every((item, index) => item === mergedData[index]);
+
+                    if (sameRefOrder) return null;
+                    return { dataList: mergedData };
+                });
             }
         });
     }
 
     updateNameListToShow = (newNameList) => {
-        this.setState({ nameListToShow: newNameList });
-    }
+        this.setState((prevState) => {
+            const prevSignature = JSON.stringify(prevState.nameListToShow || []);
+            const nextSignature = JSON.stringify(newNameList || []);
+
+            if (prevSignature === nextSignature) return null;
+            return { nameListToShow: newNameList };
+        });
+    };
 
     filterListToShow() {
         const { nameListToShow, dataList } = this.state;
         if (!nameListToShow || nameListToShow.length === 0) return dataList;
-        return _.filter(dataList, item => _.contains(nameListToShow, item.release_name));
+        return _.filter(dataList, (item) => _.contains(nameListToShow, item.release_name));
     }
 
-    getNavigationHeight = () => {
+    getNavigationHeight() {
         const navigationHeight = document.getElementById('navigation')?.clientHeight || 50;
-        this.setState({ navigationHeight });
+
+        this.setState((prevState) => {
+            if (prevState.navigationHeight === navigationHeight) return null;
+            return { navigationHeight };
+        });
     }
 
     getTopPadding() {
@@ -94,10 +175,7 @@ class IBLayout extends Component {
     render() {
         const { releaseQue, toLinks, nameList, all_release_queues } = this.state;
         const filteredData = this.filterListToShow();
-        
-        console.log('🟢 IBLayout - releaseQue:', releaseQue);
-        console.log('🟢 IBLayout - filteredData length:', filteredData.length);
-        
+
         return (
             <div className="container-fluid px-0" style={{ paddingTop: this.getTopPadding() }}>
                 <Navigation
@@ -111,10 +189,9 @@ class IBLayout extends Component {
                     }
                     archControl={<TogglesShowArchs releaseQue={releaseQue} />}
                 />
-                {/* Use the wrapper component instead of IBGroups directly */}
-                <IBGroupsWithArch 
-                    data={filteredData} 
-                    releaseQue={releaseQue} 
+                <IBGroupsWithArch
+                    data={filteredData}
+                    releaseQue={releaseQue}
                 />
             </div>
         );

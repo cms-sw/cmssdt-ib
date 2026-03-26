@@ -29,15 +29,22 @@ const archMatchesFilters = (arch, activeArchs) => {
     if (!hasOsFilter && !hasCpuFilter && !hasCompilerFilter) return true;
 
     const matchesOs =
-        !hasOsFilter || activeArchs.os.some(filter => os.includes(filter) || filter.includes(os));
+        !hasOsFilter || activeArchs.os.some((filter) => os.includes(filter) || filter.includes(os));
     const matchesCpu =
-        !hasCpuFilter || activeArchs.cpu.some(filter => cpu.includes(filter) || filter.includes(cpu));
+        !hasCpuFilter || activeArchs.cpu.some((filter) => cpu.includes(filter) || filter.includes(cpu));
     const matchesCompiler =
         !hasCompilerFilter ||
-        activeArchs.compiler.some(filter => compiler.includes(filter) || filter.includes(compiler));
+        activeArchs.compiler.some((filter) => compiler.includes(filter) || filter.includes(compiler));
 
     return matchesOs && matchesCpu && matchesCompiler;
 };
+
+const getArchStateSignature = (activeArchs = {}) =>
+    JSON.stringify({
+        os: Array.isArray(activeArchs.os) ? [...activeArchs.os].sort() : [],
+        cpu: Array.isArray(activeArchs.cpu) ? [...activeArchs.cpu].sort() : [],
+        compiler: Array.isArray(activeArchs.compiler) ? [...activeArchs.compiler].sort() : []
+    });
 
 class IBGroups extends Component {
     static propTypes = {
@@ -57,6 +64,7 @@ class IBGroups extends Component {
             transformedData: groupAndTransformIBDataList(props.data || []),
             releaseQue: props.releaseQue,
             activeArchs: props.activeArchs || { os: [], cpu: [], compiler: [] },
+            activeArchsSignature: getArchStateSignature(props.activeArchs || { os: [], cpu: [], compiler: [] }),
             expandAllCommits: false,
             showFloatingControl: true,
             showNavigator: false
@@ -64,10 +72,13 @@ class IBGroups extends Component {
     }
 
     static getDerivedStateFromProps(nextProps, prevState) {
+        const nextArchs = nextProps.activeArchs || { os: [], cpu: [], compiler: [] };
+        const nextArchsSignature = getArchStateSignature(nextArchs);
+
         if (
             nextProps.data !== prevState.originalData ||
             nextProps.releaseQue !== prevState.releaseQue ||
-            JSON.stringify(nextProps.activeArchs) !== JSON.stringify(prevState.activeArchs)
+            nextArchsSignature !== prevState.activeArchsSignature
         ) {
             const transformedData = groupAndTransformIBDataList(nextProps.data || []);
 
@@ -75,7 +86,8 @@ class IBGroups extends Component {
                 originalData: nextProps.data || [],
                 transformedData,
                 releaseQue: nextProps.releaseQue,
-                activeArchs: nextProps.activeArchs || { os: [], cpu: [], compiler: [] }
+                activeArchs: nextArchs,
+                activeArchsSignature: nextArchsSignature
             };
         }
         return null;
@@ -191,11 +203,14 @@ class IBGroups extends Component {
         }
 
         const first = group[0] || {};
-        const releaseName = first.release_name || first.id || 'unknown-release';
-        const flavor = first.flavor || 'unknown-flavor';
-        const size = group.length;
 
-        return `${releaseName}-${flavor}-${size}-${index}`;
+        const releaseName = first.release_name || first.id || 'unknown-release';
+        const flavor = first.flavor || first.release_queue || 'unknown-flavor';
+        const ibDate = first.ib_date || first.start_time || first.date || '';
+        const nextIbFlag = first.next_ib ? 'nextib' : 'regular';
+        const isIbFlag = first.isIB === false ? 'nonib' : 'ib';
+
+        return `${releaseName}-${flavor}-${ibDate}-${nextIbFlag}-${isIbFlag}`;
     };
 
     getGroupLabel = (group) => {
@@ -398,7 +413,11 @@ class IBGroups extends Component {
                         <div
                             key={groupKey}
                             ref={(el) => {
-                                this.groupRefs[groupKey] = el;
+                                if (el) {
+                                    this.groupRefs[groupKey] = el;
+                                } else {
+                                    delete this.groupRefs[groupKey];
+                                }
                             }}
                         >
                             <IBGroupFrame

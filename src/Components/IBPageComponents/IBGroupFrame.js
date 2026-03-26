@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { PureComponent } from 'react';
 import Commits from "./Commits";
 import StatusLabels from "./StatusLabels";
 import ComparisonTable from "./ComparisonTable";
@@ -11,17 +11,10 @@ import { checkIfCommitsAreEmpty, checkIfTableIsEmpty } from "../../Utils/process
  * next_ib - is the record next IB build
  */
 
-class IBGroupFrame extends Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            IBGroup: props.IBGroup,
-            releaseQue: props.releaseQue
-        };
-    }
+class IBGroupFrame extends PureComponent {
 
-    getIbGroupType() {
-        const firstIbFromList = this.state.IBGroup[0];
+    getIbGroupType(IBGroup) {
+        const firstIbFromList = IBGroup[0];
         const { isIB, next_ib } = firstIbFromList;
 
         if (isIB === true) return 'IB';
@@ -30,7 +23,9 @@ class IBGroupFrame extends Component {
     }
 
     render() {
-        const firstIbFromList = this.state.IBGroup[0];
+        const { IBGroup, releaseQue, expandAllCommits } = this.props;
+
+        const firstIbFromList = IBGroup[0];
         if (!firstIbFromList) {
             return <div><h1>Error: IB group is empty</h1></div>;
         }
@@ -41,18 +36,18 @@ class IBGroupFrame extends Component {
         let panelHeader = null;
         let showOnlyIbTag = false;
 
-        const ibGroupType = this.getIbGroupType();
+        const ibGroupType = this.getIbGroupType(IBGroup);
         const isNextIB = ibGroupType === 'nextIB';
 
         switch (ibGroupType) {
             case 'IB': {
                 const isIBGroupTableEmpty = checkIfTableIsEmpty({
                     fieldsToCheck: ['builds', 'utests', 'relvals', 'addons', 'dupDict'],
-                    IBGroup: this.state.IBGroup
+                    IBGroup: IBGroup
                 });
 
                 const isCommitsEmpty = checkIfCommitsAreEmpty({
-                    IBGroup: this.state.IBGroup
+                    IBGroup: IBGroup
                 });
 
                 if (isCommitsEmpty && isIBGroupTableEmpty) {
@@ -64,8 +59,8 @@ class IBGroupFrame extends Component {
                 if (!isIBGroupTableEmpty) {
                     comparisonTable = (
                         <ComparisonTable
-                            data={this.state.IBGroup}
-                            releaseQue={this.state.releaseQue}
+                            data={IBGroup}
+                            releaseQue={releaseQue}
                         />
                     );
                 }
@@ -78,14 +73,12 @@ class IBGroupFrame extends Component {
 
             case 'nextIB':
                 showOnlyIbTag = true;
-                panelHeader = 'nextIB'; 
-                commitPanelProps = {};
+                panelHeader = 'nextIB';
                 break;
 
             case 'fullBuild':
                 showOnlyIbTag = true;
                 panelHeader = firstIbFromList.release_name;
-                commitPanelProps = {};
                 break;
 
             default:
@@ -94,7 +87,7 @@ class IBGroupFrame extends Component {
 
         statusLabels = (
             <StatusLabels
-                IBGroup={this.state.IBGroup}
+                IBGroup={IBGroup}
                 ibGroupType={ibGroupType}
                 showOnlyIbTag={showOnlyIbTag}
             />
@@ -115,8 +108,8 @@ class IBGroupFrame extends Component {
                   borderBottom: '1px solid #bfdbfe',
                   color: '#1d4ed8',
                   display: 'flex',
-                  flexDirection: 'column',     
-                  alignItems: 'center',        
+                  flexDirection: 'column',
+                  alignItems: 'center',
                   gap: '4px'
               }
             : {
@@ -150,8 +143,8 @@ class IBGroupFrame extends Component {
                     {comparisonTable}
                     <Commits
                         commitPanelProps={commitPanelProps}
-                        data={this.state.IBGroup}
-                        expandAllCommits={this.props.expandAllCommits}
+                        data={IBGroup}
+                        expandAllCommits={expandAllCommits}
                     />
                 </Card.Body>
             </Card>
