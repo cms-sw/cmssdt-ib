@@ -10,8 +10,14 @@ import { useShowArch } from "../context/ShowArchContext";
 
 const { urls } = config;
 
-// Global cache for already loaded IB json files
+/** Keep IB JSON fresh for 15 minutes */
+const IB_MEMORY_TTL_MS = 15 * 60 * 1000;
 const ibDataCache = {};
+
+function isFreshCache(entry, ttlMs) {
+    if (!entry || !entry.cachedAt) return false;
+    return Date.now() - entry.cachedAt < ttlMs;
+}
 
 const IBGroupsWithArch = React.memo((props) => {
     const { getActiveArchsForQue } = useShowArch();
@@ -26,6 +32,7 @@ class IBLayout extends Component {
 
         this.boundGetNavigationHeight = this.getNavigationHeight.bind(this);
         this.lastRequestedIbListSignature = "";
+        this._isMounted = false;
 
         this.state = {
             nameList: [],
@@ -39,6 +46,7 @@ class IBLayout extends Component {
     }
 
     componentDidMount() {
+        this._isMounted = true;
         this.updateState(this.props);
         window.addEventListener('resize', this.boundGetNavigationHeight);
         this.getNavigationHeight();
@@ -51,6 +59,7 @@ class IBLayout extends Component {
     }
 
     componentWillUnmount() {
+        this._isMounted = false;
         window.removeEventListener('resize', this.boundGetNavigationHeight);
     }
 
@@ -92,7 +101,9 @@ class IBLayout extends Component {
 
         const listSignature = JSON.stringify(ibList);
         if (this.lastRequestedIbListSignature === listSignature) {
-            return;
+            // Even if the list is the same, we still want to rebuild from cache
+            // because some entries may have expired and been refreshed.
+            // So do not return early here.
         }
         this.lastRequestedIbListSignature = listSignature;
 
@@ -100,8 +111,8 @@ class IBLayout extends Component {
         const missingNames = [];
 
         ibList.forEach((name) => {
-            if (ibDataCache[name]) {
-                cachedData.push(ibDataCache[name]);
+            if (isFreshCache(ibDataCache[name], IB_MEMORY_TTL_MS)) {
+                cachedData.push(ibDataCache[name].data);
             } else {
                 missingNames.push(name);
             }
@@ -124,17 +135,24 @@ class IBLayout extends Component {
                 responsesList.forEach((response, index) => {
                     const name = missingNames[index];
                     if (response && response.data) {
-                        ibDataCache[name] = response.data;
+                        ibDataCache[name] = {
+                            data: response.data,
+                            cachedAt: Date.now()
+                        };
                     }
                 });
 
                 const mergedData = ibList
-                    .map((name) => ibDataCache[name])
+                    .map((name) => ibDataCache[name]?.data)
                     .filter((item) => item);
+
+                if (!this._isMounted) return;
 
                 this.setState((prevState) => {
                     const sameLength = prevState.dataList.length === mergedData.length;
-                    const sameRefOrder = sameLength && prevState.dataList.every((item, index) => item === mergedData[index]);
+                    const sameRefOrder =
+                        sameLength &&
+                        prevState.dataList.every((item, index) => item === mergedData[index]);
 
                     if (sameRefOrder) return null;
                     return { dataList: mergedData };
@@ -169,7 +187,7 @@ class IBLayout extends Component {
     }
 
     getTopPadding() {
-        return this.state.navigationHeight + 20;
+        return this.state.navigationHeight + 4;
     }
 
     render() {
@@ -177,7 +195,7 @@ class IBLayout extends Component {
         const filteredData = this.filterListToShow();
 
         return (
-            <div className="container-fluid px-0" style={{ paddingTop: this.getTopPadding() }}>
+            <div className="container-fluid px-0" >
                 <Navigation
                     toLinks={toLinks}
                     flaworControl={

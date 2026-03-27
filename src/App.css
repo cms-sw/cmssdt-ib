@@ -29,7 +29,7 @@
 
 /* Table frame padding so it doesn't touch the edge (desktop/tablet) */
 .ib-table-frame {
-  padding: 0 14px 14px 14px;
+  padding: 0 14px 6px 14px;
 }
 
 /* Optional: keep container almost full width */
@@ -104,7 +104,7 @@
    ============================== */
 @media (max-width: 768px) {
   .ib-table-frame {
-    padding: 0 8px 10px 8px;
+    padding: 0 8px 6px 8px;
   }
 
   /* swipe container */
