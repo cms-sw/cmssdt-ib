@@ -313,7 +313,7 @@ const Navigation = ({ toLinks, flaworControl, archControl }) => {
               }}
             >
               <img
-              src="/SDT/public/cms-sw.github.io/images/CMS_logo-round.png"
+              src="CMS_logo-round.png"
               alt="CMS Offline & Computing"
               style={{
                 height: "36px",
