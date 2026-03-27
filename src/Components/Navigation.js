@@ -179,7 +179,7 @@ const Navigation = ({ toLinks, flaworControl, archControl }) => {
     };
   }, [toLinks, location.pathname]);
 
-  const spacerHeight = showFilters ? 170 : 76;
+  const spacerHeight = showFilters ? 145 : 70;
 
   return (
     <>
@@ -301,23 +301,37 @@ const Navigation = ({ toLinks, flaworControl, archControl }) => {
         <Container fluid className="px-3 px-md-4">
           <Navbar.Brand className="d-flex align-items-center">
             <div
-              className="me-3 d-flex align-items-center justify-content-center"
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                background: NAV_THEME.brandChipGradient,
-                color: "white"
+                //background: "#ffffff",
+                padding: "4px 4px",
+                borderRadius: "8px",
+                marginRight: "8px",
+                marginLeft: "10px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
               }}
             >
-              <FaCubes size={18} />
+              <img
+              src="/SDT/public/cms-sw.github.io/images/CMS_logo-round.png"
+              alt="CMS Offline & Computing"
+              style={{
+                height: "36px",
+                width: "auto",
+                marginRight: "10px",
+                objectFit: "contain",
+                transform: "scale(1.4)"
+              }}
+            />
             </div>
+            
 
-            <div className="d-flex align-items-center gap-2">
-              <span className="fw-bold" style={{ fontSize: "1.15rem", letterSpacing: 0.2 }}>
-                CMSSW IB Page
-              </span>
-            </div>
+            <span
+              className="fw-bold"
+              style={{ fontSize: "1.15rem", letterSpacing: 0.2, color: "#fff" }}
+            >
+              CMSSW IB Page
+            </span>
           </Navbar.Brand>
 
           <Navbar.Toggle aria-controls="basic-navbar-nav" className="border-0">

@@ -314,11 +314,7 @@ class StatusLabels extends Component {
     const { IBGroup, showOnlyIbTag, ibGroupType, ib } = this.state;
 
     if (showOnlyIbTag) {
-      return (
-        <div className="d-flex align-items-center">
-          {StatusLabels.renderIBTag(IBGroup, ibGroupType)}
-        </div>
-      );
+      return null; 
     }
 
     const menuData = [];

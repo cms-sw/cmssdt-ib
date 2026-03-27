@@ -2,11 +2,12 @@ import React, { Component } from 'react';
 import IBGroupFrame from './IBGroupFrame';
 import { groupAndTransformIBDataList } from '../../Utils/processing';
 import PropTypes from 'prop-types';
-import { Button } from 'react-bootstrap';
+import { OverlayTrigger, Tooltip, Spinner } from 'react-bootstrap';
+import { GoGitPullRequest } from "react-icons/go";
 import {
     FaCodeBranch,
-    FaChevronDown,
-    FaChevronUp,
+    FaPlus,
+    FaMinus,
     FaThumbtack,
     FaArrowUp,
     FaArrowDown,
@@ -56,8 +57,8 @@ class IBGroups extends Component {
     constructor(props) {
         super(props);
 
-        this.scrollHideTimer = null;
         this.groupRefs = {};
+        this.toggleLoadingTimer = null;
 
         this.state = {
             originalData: props.data || [],
@@ -66,8 +67,8 @@ class IBGroups extends Component {
             activeArchs: props.activeArchs || { os: [], cpu: [], compiler: [] },
             activeArchsSignature: getArchStateSignature(props.activeArchs || { os: [], cpu: [], compiler: [] }),
             expandAllCommits: false,
-            showFloatingControl: true,
-            showNavigator: false
+            showNavigator: false,
+            isToggleLoading: false
         };
     }
 
@@ -93,43 +94,26 @@ class IBGroups extends Component {
         return null;
     }
 
-    componentDidMount() {
-        window.addEventListener('scroll', this.handleScroll, { passive: true });
-    }
-
     componentWillUnmount() {
-        window.removeEventListener('scroll', this.handleScroll);
-        if (this.scrollHideTimer) {
-            clearTimeout(this.scrollHideTimer);
+        if (this.toggleLoadingTimer) {
+            clearTimeout(this.toggleLoadingTimer);
         }
     }
-
-    handleScroll = () => {
-        if (this.state.showFloatingControl) {
-            this.setState({ showFloatingControl: false });
-        }
-
-        if (this.scrollHideTimer) {
-            clearTimeout(this.scrollHideTimer);
-        }
-
-        this.scrollHideTimer = setTimeout(() => {
-            // keep hidden after scroll; user must click pin to show again
-        }, 150);
-    };
 
     toggleAllCommits = () => {
-        this.setState((prevState) => ({
-            expandAllCommits: !prevState.expandAllCommits
-        }));
-    };
+        if (this.state.isToggleLoading) return;
 
-    showFloatingButton = () => {
-        this.setState({ showFloatingControl: true });
-    };
-
-    hideFloatingButton = () => {
-        this.setState({ showFloatingControl: false });
+        this.setState(
+            (prevState) => ({
+                expandAllCommits: !prevState.expandAllCommits,
+                isToggleLoading: true
+            }),
+            () => {
+                this.toggleLoadingTimer = setTimeout(() => {
+                    this.setState({ isToggleLoading: false });
+                }, 450);
+            }
+        );
     };
 
     toggleNavigator = () => {
@@ -225,9 +209,8 @@ class IBGroups extends Component {
     };
 
     renderFloatingToggle() {
-        const { expandAllCommits, showFloatingControl } = this.state;
-
-        const NAVBAR_OFFSET = 70;
+        const { expandAllCommits, isToggleLoading } = this.state;
+        const NAVBAR_OFFSET = 200;
 
         return (
             <div
@@ -238,92 +221,104 @@ class IBGroups extends Component {
                     zIndex: 1050
                 }}
             >
-                {showFloatingControl ? (
-                    <div
-                        className="d-flex align-items-center gap-2"
-                        style={{ transition: 'all 0.2s ease' }}
-                    >
-                        <Button
-                            variant={expandAllCommits ? 'outline-secondary' : 'primary'}
-                            size="sm"
-                            onClick={this.toggleAllCommits}
-                            style={{
-                                borderRadius: '999px',
-                                padding: '0.55rem 0.95rem',
-                                fontWeight: 700,
-                                boxShadow: '0 8px 20px rgba(15, 23, 42, 0.14)',
-                                whiteSpace: 'nowrap',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}
-                        >
-                            <FaCodeBranch size={14} />
-                            {expandAllCommits
-                                ? 'Hide All Commits & PRs'
-                                : 'Show All Commits & PRs'}
-                        </Button>
-
-                        <button
-                            onClick={this.hideFloatingButton}
-                            title="Hide control"
-                            style={miniToolButtonStyle}
-                        >
-                            <FaChevronUp size={12} />
-                        </button>
-                    </div>
-                ) : (
+                <OverlayTrigger
+                    placement="left"
+                    overlay={
+                        <Tooltip id="commits-toggle-tooltip">
+                            {isToggleLoading
+                                ? 'Updating commits & PRs...'
+                                : expandAllCommits
+                                  ? 'Collapse all commits & PRs'
+                                  : 'Expand all commits & PRs'}
+                        </Tooltip>
+                    }
+                >
                     <button
-                        onClick={this.showFloatingButton}
-                        title="Show commits control"
-                        style={pinControlButtonStyle}
+                        onClick={this.toggleAllCommits}
+                        disabled={isToggleLoading}
+                        aria-label={expandAllCommits ? 'Collapse all commits and PRs' : 'Expand all commits and PRs'}
+                        style={{
+                            ...floatingToggleButtonStyle,
+                            background: expandAllCommits ? '#1d4ed8' : '#ffffff',
+                            color: expandAllCommits ? '#ffffff' : '#334155',
+                            border: expandAllCommits ? '1px solid #1d4ed8' : '1px solid #cbd5e1',
+                            position: 'relative',
+                            overflow: 'visible',
+                            opacity: isToggleLoading ? 0.88 : 1,
+                            cursor: isToggleLoading ? 'wait' : 'pointer'
+                        }}
                     >
-                        <FaChevronDown size={14} />
+                        {isToggleLoading ? (
+                            <Spinner animation="border" size="sm" role="status" />
+                        ) : (
+                            <>
+                                <GoGitPullRequest size={20} />
+                                <span
+                                    style={{
+                                        position: 'absolute',
+                                        top: '4px',
+                                        right: '4px',
+                                        width: '16px',
+                                        height: '16px',
+                                        borderRadius: '50%',
+                                        background: expandAllCommits ? '#ef4444' : '#22c55e',
+                                        color: '#ffffff',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '10px',
+                                        fontWeight: 'bold',
+                                        lineHeight: 1,
+                                        boxShadow: '0 2px 6px rgba(0,0,0,0.18)'
+                                    }}
+                                >
+                                    {expandAllCommits ? <FaMinus size={8} /> : <FaPlus size={8} />}
+                                </span>
+                            </>
+                        )}
                     </button>
-                )}
+                </OverlayTrigger>
             </div>
         );
     }
 
     renderCornerButtons() {
         return (
-            <>
-                <div
-                    style={{
-                        position: 'fixed',
-                        right: '16px',
-                        bottom: '20px',
-                        zIndex: 1050,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px'
-                    }}
+            <div
+                style={{
+                    position: 'fixed',
+                    right: '16px',
+                    bottom: '20px',
+                    zIndex: 1050,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                }}
+            >
+                <button
+                    onClick={this.scrollToTop}
+                    title="Go to top"
+                    style={miniToolButtonStyle}
                 >
-                    <button
-                        onClick={this.scrollToTop}
-                        title="Go to top"
-                        style={miniToolButtonStyle}
-                    >
-                        <FaArrowUp size={12} />
-                    </button>
+                    <FaArrowUp size={12} />
+                </button>
 
-                    <button
-                        onClick={this.scrollToBottom}
-                        title="Go to bottom"
-                        style={miniToolButtonStyle}
-                    >
-                        <FaArrowDown size={12} />
-                    </button>
+                <button
+                    onClick={this.scrollToBottom}
+                    title="Go to bottom"
+                    style={miniToolButtonStyle}
+                >
+                    <FaArrowDown size={12} />
+                </button>
 
-                    <button
-                        onClick={this.toggleNavigator}
-                        title="Show releases"
-                        style={pinControlButtonStyle}
-                    >
-                        <FaThumbtack size={12} />
-                    </button>
-                </div>
-            </>
+                <button
+                    onClick={this.toggleNavigator}
+                    title="Show releases"
+                    style={pinControlButtonStyle}
+                >
+                    <FaThumbtack size={12} />
+                </button>
+            </div>
         );
     }
 
@@ -459,6 +454,18 @@ const pinControlButtonStyle = {
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer'
+};
+
+const floatingToggleButtonStyle = {
+    width: '42px',
+    height: '42px',
+    borderRadius: '50%',
+    boxShadow: '0 8px 20px rgba(15, 23, 42, 0.14)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
 };
 
 const navigatorBackdropStyle = {

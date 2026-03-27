@@ -5,12 +5,6 @@ import ComparisonTable from "./ComparisonTable";
 import { Card } from "react-bootstrap";
 import { checkIfCommitsAreEmpty, checkIfTableIsEmpty } from "../../Utils/processing";
 
-/**
- * ib_date - field grouped by
- * isIB - true(IB)/ false(next release, integration build)
- * next_ib - is the record next IB build
- */
-
 class IBGroupFrame extends PureComponent {
 
     getIbGroupType(IBGroup) {
@@ -39,6 +33,8 @@ class IBGroupFrame extends PureComponent {
         const ibGroupType = this.getIbGroupType(IBGroup);
         const isNextIB = ibGroupType === 'nextIB';
 
+        const ibTagDropdown = StatusLabels.renderIBTag(IBGroup, ibGroupType);
+
         switch (ibGroupType) {
             case 'IB': {
                 const isIBGroupTableEmpty = checkIfTableIsEmpty({
@@ -51,7 +47,7 @@ class IBGroupFrame extends PureComponent {
                 });
 
                 if (isCommitsEmpty && isIBGroupTableEmpty) {
-                    return null; // hide empty IBs
+                    return null;
                 }
 
                 panelHeader = firstIbFromList.release_name;
@@ -93,7 +89,6 @@ class IBGroupFrame extends PureComponent {
             />
         );
 
-        // Styling for nextIB
         const cardStyle = isNextIB
             ? {
                   border: '1px solid #93c5fd',
@@ -108,9 +103,10 @@ class IBGroupFrame extends PureComponent {
                   borderBottom: '1px solid #bfdbfe',
                   color: '#1d4ed8',
                   display: 'flex',
-                  flexDirection: 'column',
+                  justifyContent: 'center',
                   alignItems: 'center',
-                  gap: '4px'
+                  gap: '10px',
+                  flexWrap: 'wrap'
               }
             : {
                   display: 'flex',
@@ -123,18 +119,21 @@ class IBGroupFrame extends PureComponent {
                     <strong>{panelHeader}</strong>
 
                     {isNextIB && (
-                        <span
-                            style={{
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                padding: '3px 10px',
-                                borderRadius: '999px',
-                                background: '#2563eb',
-                                color: '#ffffff'
-                            }}
-                        >
-                            Upcoming
-                        </span>
+                        <>
+                            <span
+                                style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    padding: '3px 10px',
+                                    borderRadius: '999px',
+                                    background: '#2563eb',
+                                    color: '#ffffff'
+                                }}
+                            >
+                                Upcoming
+                            </span>
+                            {ibTagDropdown}
+                        </>
                     )}
                 </Card.Header>
 

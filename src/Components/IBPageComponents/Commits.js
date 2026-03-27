@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { GoGitPullRequest } from "react-icons/go";
 import PropTypes from "prop-types";
 import {
   Col,
@@ -20,7 +21,7 @@ import {
   getPreviousIbTag
 } from "../../Utils/processing";
 import { config } from "../../config";
-import { getCacheItem, setCacheItem } from "../../Utils/cache";
+import { getSingleFile } from "../../Utils/ajax";
 import {
   FaCodeBranch,
   FaGitAlt,
@@ -40,18 +41,21 @@ import {
 
 const { githubCompareTags, githubRepo, githubRepoTag } = config.urls;
 
-/** TTLs */
-const LABELS_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
-const PR_JSON_TTL_MS = 15 * 60 * 1000; // 15 minutes
+/** Memory cache TTLs */
+const LABELS_MEMORY_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const PR_MEMORY_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
-/** -------------------- Global shared caches -------------------- **/
-let globalCmsswLabelsCache = null;
+let globalCmsswLabelsCache = null; 
 let globalCmsswLabelsPromise = null;
 
-const globalPrJsonCache = {};
+const globalPrJsonCache = {}; 
 const globalPrJsonPromises = {};
 
-/** Neutral / professional palette */
+function isFreshCache(entry, ttlMs) {
+  if (!entry || !entry.cachedAt) return false;
+  return Date.now() - entry.cachedAt < ttlMs;
+}
+
 const THEME = {
   primary: "#2563eb",
   primaryHover: "#1d4ed8",
@@ -70,7 +74,6 @@ const THEME = {
   danger: "#dc2626"
 };
 
-/** Styles */
 const styles = {
   card: {
     border: `1px solid ${THEME.border}`,
@@ -305,14 +308,6 @@ function getPrJsonUrl(seriesKey) {
 
 function getCmsswLabelsUrl() {
   return "/SDT/public/cms-sw.github.io/data/cmssw_labels.json";
-}
-
-function getLabelsStorageKey() {
-  return "cmssw_labels_json";
-}
-
-function getPrJsonStorageKey(seriesKey) {
-  return `pr_json_${seriesKey}`;
 }
 
 function getRepoKey(repo) {
@@ -1137,6 +1132,8 @@ class Commits extends Component {
   constructor(props) {
     super(props);
     this.toggleLoaderTimeout = null;
+    this._isMounted = false;
+    this.visibilityHandler = null;
 
     this.state = {
       commitPanelProps: props.commitPanelProps || {},
@@ -1148,7 +1145,9 @@ class Commits extends Component {
       prJsonCache: {},
       prJsonLoading: {},
       prJsonErrors: {},
-      cmsswLabelsMap: globalCmsswLabelsCache || getCacheItem(getLabelsStorageKey()) || {},
+      cmsswLabelsMap: isFreshCache(globalCmsswLabelsCache, LABELS_MEMORY_TTL_MS)
+        ? globalCmsswLabelsCache.data
+        : {},
       cmsswLabelsLoading: false,
       cmsswLabelsError: null,
       previewPr: null,
@@ -1172,8 +1171,18 @@ class Commits extends Component {
   }
 
   componentDidMount() {
+    this._isMounted = true;
     this.loadCmsswLabels();
     this.loadPrJsonForActiveTab(this.state.activeTabKey);
+
+    this.visibilityHandler = () => {
+      if (document.visibilityState === "visible") {
+        this.loadCmsswLabels();
+        this.loadPrJsonForActiveTab(this.state.activeTabKey);
+      }
+    };
+
+    document.addEventListener("visibilitychange", this.visibilityHandler);
   }
 
   componentDidUpdate(prevProps) {
@@ -1192,8 +1201,12 @@ class Commits extends Component {
   }
 
   componentWillUnmount() {
+    this._isMounted = false;
     if (this.toggleLoaderTimeout) {
       clearTimeout(this.toggleLoaderTimeout);
+    }
+    if (this.visibilityHandler) {
+      document.removeEventListener("visibilitychange", this.visibilityHandler);
     }
   }
 
@@ -1204,7 +1217,9 @@ class Commits extends Component {
 
     this.setState({ toggleLoading: true });
     this.toggleLoaderTimeout = setTimeout(() => {
-      this.setState({ toggleLoading: false });
+      if (this._isMounted) {
+        this.setState({ toggleLoading: false });
+      }
     }, 250);
   };
 
@@ -1234,47 +1249,82 @@ class Commits extends Component {
   loadPrJsonForSeriesKey = async (seriesKey) => {
     if (!seriesKey) return null;
 
-    const localStorageKey = getPrJsonStorageKey(seriesKey);
-    const storedData = getCacheItem(localStorageKey);
+    if (isFreshCache(globalPrJsonCache[seriesKey], PR_MEMORY_TTL_MS)) {
+      const data = globalPrJsonCache[seriesKey].data;
 
-    if (globalPrJsonCache[seriesKey]) {
-      this.setState((prev) => ({
-        prJsonCache: {
-          ...prev.prJsonCache,
-          [seriesKey]: globalPrJsonCache[seriesKey]
-        },
-        prJsonLoading: {
-          ...prev.prJsonLoading,
-          [seriesKey]: false
-        },
-        prJsonErrors: {
-          ...prev.prJsonErrors,
-          [seriesKey]: null
-        }
-      }));
-      return globalPrJsonCache[seriesKey];
-    }
+      if (this._isMounted) {
+        this.setState((prev) => ({
+          prJsonCache: {
+            ...prev.prJsonCache,
+            [seriesKey]: data
+          },
+          prJsonLoading: {
+            ...prev.prJsonLoading,
+            [seriesKey]: false
+          },
+          prJsonErrors: {
+            ...prev.prJsonErrors,
+            [seriesKey]: null
+          }
+        }));
+      }
 
-    if (storedData) {
-      globalPrJsonCache[seriesKey] = storedData;
-      this.setState((prev) => ({
-        prJsonCache: {
-          ...prev.prJsonCache,
-          [seriesKey]: storedData
-        },
-        prJsonLoading: {
-          ...prev.prJsonLoading,
-          [seriesKey]: false
-        },
-        prJsonErrors: {
-          ...prev.prJsonErrors,
-          [seriesKey]: null
-        }
-      }));
-      return storedData;
+      return data;
     }
 
     if (globalPrJsonPromises[seriesKey]) {
+      if (this._isMounted) {
+        this.setState((prev) => ({
+          prJsonLoading: {
+            ...prev.prJsonLoading,
+            [seriesKey]: true
+          },
+          prJsonErrors: {
+            ...prev.prJsonErrors,
+            [seriesKey]: null
+          }
+        }));
+      }
+
+      try {
+        const data = await globalPrJsonPromises[seriesKey];
+
+        if (this._isMounted) {
+          this.setState((prev) => ({
+            prJsonCache: {
+              ...prev.prJsonCache,
+              [seriesKey]: data
+            },
+            prJsonLoading: {
+              ...prev.prJsonLoading,
+              [seriesKey]: false
+            },
+            prJsonErrors: {
+              ...prev.prJsonErrors,
+              [seriesKey]: null
+            }
+          }));
+        }
+
+        return data;
+      } catch (error) {
+        if (this._isMounted) {
+          this.setState((prev) => ({
+            prJsonErrors: {
+              ...prev.prJsonErrors,
+              [seriesKey]: error.message
+            },
+            prJsonLoading: {
+              ...prev.prJsonLoading,
+              [seriesKey]: false
+            }
+          }));
+        }
+        return null;
+      }
+    }
+
+    if (this._isMounted) {
       this.setState((prev) => ({
         prJsonLoading: {
           ...prev.prJsonLoading,
@@ -1285,9 +1335,27 @@ class Commits extends Component {
           [seriesKey]: null
         }
       }));
+    }
 
-      try {
-        const data = await globalPrJsonPromises[seriesKey];
+    globalPrJsonPromises[seriesKey] = getSingleFile({
+      fileUrl: getPrJsonUrl(seriesKey)
+    })
+      .then((response) => {
+        const data = response?.data || {};
+        globalPrJsonCache[seriesKey] = {
+          data,
+          cachedAt: Date.now()
+        };
+        return data;
+      })
+      .finally(() => {
+        delete globalPrJsonPromises[seriesKey];
+      });
+
+    try {
+      const data = await globalPrJsonPromises[seriesKey];
+
+      if (this._isMounted) {
         this.setState((prev) => ({
           prJsonCache: {
             ...prev.prJsonCache,
@@ -1296,10 +1364,17 @@ class Commits extends Component {
           prJsonLoading: {
             ...prev.prJsonLoading,
             [seriesKey]: false
+          },
+          prJsonErrors: {
+            ...prev.prJsonErrors,
+            [seriesKey]: null
           }
         }));
-        return data;
-      } catch (error) {
+      }
+
+      return data;
+    } catch (error) {
+      if (this._isMounted) {
         this.setState((prev) => ({
           prJsonErrors: {
             ...prev.prJsonErrors,
@@ -1310,126 +1385,72 @@ class Commits extends Component {
             [seriesKey]: false
           }
         }));
-        return null;
       }
-    }
-
-    this.setState((prev) => ({
-      prJsonLoading: {
-        ...prev.prJsonLoading,
-        [seriesKey]: true
-      },
-      prJsonErrors: {
-        ...prev.prJsonErrors,
-        [seriesKey]: null
-      }
-    }));
-
-    globalPrJsonPromises[seriesKey] = fetch(getPrJsonUrl(seriesKey))
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Failed to load ${seriesKey}.json: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((data) => {
-        globalPrJsonCache[seriesKey] = data;
-        setCacheItem(localStorageKey, data, PR_JSON_TTL_MS);
-        return data;
-      })
-      .finally(() => {
-        delete globalPrJsonPromises[seriesKey];
-      });
-
-    try {
-      const data = await globalPrJsonPromises[seriesKey];
-      this.setState((prev) => ({
-        prJsonCache: {
-          ...prev.prJsonCache,
-          [seriesKey]: data
-        },
-        prJsonLoading: {
-          ...prev.prJsonLoading,
-          [seriesKey]: false
-        }
-      }));
-      return data;
-    } catch (error) {
-      this.setState((prev) => ({
-        prJsonErrors: {
-          ...prev.prJsonErrors,
-          [seriesKey]: error.message
-        },
-        prJsonLoading: {
-          ...prev.prJsonLoading,
-          [seriesKey]: false
-        }
-      }));
       return null;
     }
   };
 
   loadCmsswLabels = async () => {
-    const storedLabels = getCacheItem(getLabelsStorageKey());
+    if (isFreshCache(globalCmsswLabelsCache, LABELS_MEMORY_TTL_MS)) {
+      const data = globalCmsswLabelsCache.data;
 
-    if (globalCmsswLabelsCache) {
-      this.setState({
-        cmsswLabelsMap: globalCmsswLabelsCache,
-        cmsswLabelsLoading: false,
-        cmsswLabelsError: null
-      });
-      return globalCmsswLabelsCache;
-    }
-
-    if (storedLabels) {
-      globalCmsswLabelsCache = storedLabels;
-      this.setState({
-        cmsswLabelsMap: storedLabels,
-        cmsswLabelsLoading: false,
-        cmsswLabelsError: null
-      });
-      return storedLabels;
-    }
-
-    if (globalCmsswLabelsPromise) {
-      this.setState({
-        cmsswLabelsLoading: true,
-        cmsswLabelsError: null
-      });
-
-      try {
-        const data = await globalCmsswLabelsPromise;
+      if (this._isMounted) {
         this.setState({
-          cmsswLabelsMap: data || {},
+          cmsswLabelsMap: data,
           cmsswLabelsLoading: false,
           cmsswLabelsError: null
         });
+      }
+
+      return data;
+    }
+
+    if (globalCmsswLabelsPromise) {
+      if (this._isMounted) {
+        this.setState({
+          cmsswLabelsLoading: true,
+          cmsswLabelsError: null
+        });
+      }
+
+      try {
+        const data = await globalCmsswLabelsPromise;
+        if (this._isMounted) {
+          this.setState({
+            cmsswLabelsMap: data || {},
+            cmsswLabelsLoading: false,
+            cmsswLabelsError: null
+          });
+        }
         return data;
       } catch (error) {
-        this.setState({
-          cmsswLabelsError: error.message,
-          cmsswLabelsLoading: false
-        });
+        if (this._isMounted) {
+          this.setState({
+            cmsswLabelsError: error.message,
+            cmsswLabelsLoading: false
+          });
+        }
         return null;
       }
     }
 
-    this.setState({
-      cmsswLabelsLoading: true,
-      cmsswLabelsError: null
-    });
+    if (this._isMounted) {
+      this.setState({
+        cmsswLabelsLoading: true,
+        cmsswLabelsError: null
+      });
+    }
 
-    globalCmsswLabelsPromise = fetch(getCmsswLabelsUrl())
+    globalCmsswLabelsPromise = getSingleFile({
+      fileUrl: getCmsswLabelsUrl()
+    })
       .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Failed to load cmssw_labels.json: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((data) => {
-        globalCmsswLabelsCache = data || {};
-        setCacheItem(getLabelsStorageKey(), globalCmsswLabelsCache, LABELS_TTL_MS);
-        return globalCmsswLabelsCache;
+        const data = response?.data || {};
+        globalCmsswLabelsCache = {
+          data,
+          cachedAt: Date.now()
+        };
+        return data;
       })
       .finally(() => {
         globalCmsswLabelsPromise = null;
@@ -1437,17 +1458,21 @@ class Commits extends Component {
 
     try {
       const data = await globalCmsswLabelsPromise;
-      this.setState({
-        cmsswLabelsMap: data || {},
-        cmsswLabelsLoading: false,
-        cmsswLabelsError: null
-      });
+      if (this._isMounted) {
+        this.setState({
+          cmsswLabelsMap: data || {},
+          cmsswLabelsLoading: false,
+          cmsswLabelsError: null
+        });
+      }
       return data;
     } catch (error) {
-      this.setState({
-        cmsswLabelsError: error.message,
-        cmsswLabelsLoading: false
-      });
+      if (this._isMounted) {
+        this.setState({
+          cmsswLabelsError: error.message,
+          cmsswLabelsLoading: false
+        });
+      }
       return null;
     }
   };
@@ -1484,8 +1509,11 @@ class Commits extends Component {
     let previewError = null;
 
     try {
-      let prJsonData =
-        seriesKey ? (this.state.prJsonCache[seriesKey] || globalPrJsonCache[seriesKey]) : null;
+      let prJsonData = null;
+
+      if (seriesKey && isFreshCache(globalPrJsonCache[seriesKey], PR_MEMORY_TTL_MS)) {
+        prJsonData = globalPrJsonCache[seriesKey].data;
+      }
 
       if (!prJsonData && seriesKey) {
         prJsonData = await this.loadPrJsonForSeriesKey(seriesKey);
@@ -1507,12 +1535,14 @@ class Commits extends Component {
         "Could not load full PR metadata. Showing available data only.";
     }
 
-    this.setState({
-      previewPr: finalPr,
-      previewLoading: false,
-      previewError,
-      previewLoadingPrNumber: null
-    });
+    if (this._isMounted) {
+      this.setState({
+        previewPr: finalPr,
+        previewLoading: false,
+        previewError,
+        previewLoadingPrNumber: null
+      });
+    }
   };
 
   closePreviewModal = () => {
@@ -1631,7 +1661,15 @@ class Commits extends Component {
       const currentTag = getCurrentIbTag(ib);
       const previousTag = getPreviousIbTag(ib);
       const seriesKey = getSeriesKeyFromTag(currentTag || previousTag);
-      const prJsonData = seriesKey ? (prJsonCache[seriesKey] || globalPrJsonCache[seriesKey]) : null;
+
+      let prJsonData = null;
+      if (seriesKey) {
+        if (isFreshCache(globalPrJsonCache[seriesKey], PR_MEMORY_TTL_MS)) {
+          prJsonData = globalPrJsonCache[seriesKey].data;
+        } else if (prJsonCache[seriesKey]) {
+          prJsonData = prJsonCache[seriesKey];
+        }
+      }
 
       const cmsswTabKey = `cmssw-${pos}`;
 
@@ -1759,8 +1797,8 @@ class Commits extends Component {
             }
           >
             <div style={styles.cardHeaderContent}>
-              <FaCodeBranch style={{ color: THEME.primary }} />
-              <span style={{ fontSize: "0.95rem" }}>Commits & Pull Requests</span>
+              <GoGitPullRequest size={20} style={{ color: THEME.primary }} />
+              <span style={{ fontSize: "0.95rem" }}>Pull Requests</span>
             </div>
 
             <div style={styles.expandButton}>

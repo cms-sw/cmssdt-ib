@@ -3,17 +3,24 @@ import wrapper from 'axios-cache-plugin';
 
 let httpWrapper = wrapper(axios, {
     maxCacheSize: 200,
-    ttl: 5 * 60 * 1000
+    ttl: 15 * 60 * 1000 // 15 min
 });
 
 httpWrapper.__addFilter(/\.json/);
 
 export function getSingleFile({fileUrl, onSuccessCallback}) {
-    httpWrapper.get(fileUrl)
-        .then(onSuccessCallback)
-        .catch(function (error) {
-            console.error(error);
-        });
+  return httpWrapper
+    .get(fileUrl)
+    .then((response) => {
+      if (typeof onSuccessCallback === "function") {
+        onSuccessCallback(response);
+      }
+      return response;
+    })
+    .catch(function (error) {
+      console.error(error);
+      throw error;
+    });
 }
 
 // Helper to add a delay

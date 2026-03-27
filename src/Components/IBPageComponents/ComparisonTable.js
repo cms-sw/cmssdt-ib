@@ -583,7 +583,6 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
         <div
           className="table-responsive ib-table-responsive"
           style={{
-            minHeight: '400px',
             borderRadius: '8px',
             border: `1px solid ${THEME.borderDark}`,
             overflowX: 'auto',
