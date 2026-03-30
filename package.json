@@ -20,6 +20,9 @@
     "underscore": "^1.13.7",
     "uuid": "^9.0.1"
   },
+  "overrides": {
+    "node-forge": "1.4.0"
+  },
   "browserslist": {
     "production": [
       ">0.2%",
