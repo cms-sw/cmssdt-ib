@@ -41,7 +41,9 @@ class IBLayout extends Component {
             all_release_queues: props.structure?.all_release_queues || [],
             toLinks: props.toLinks || [],
             navigationHeight: 50,
-            releaseQue: props.params?.prefix || ""
+            releaseQue: props.params?.prefix || "",
+            showUnauthorizedMessage: false,
+            unauthorizedMessage: ""
         };
     }
 
@@ -49,6 +51,7 @@ class IBLayout extends Component {
         this._isMounted = true;
         this.updateState(this.props);
         window.addEventListener('resize', this.boundGetNavigationHeight);
+        window.addEventListener('app:unauthorized', this.handleUnauthorized);
         this.getNavigationHeight();
     }
 
@@ -61,6 +64,7 @@ class IBLayout extends Component {
     componentWillUnmount() {
         this._isMounted = false;
         window.removeEventListener('resize', this.boundGetNavigationHeight);
+        window.removeEventListener('app:unauthorized', this.handleUnauthorized);
     }
 
     updateState(props) {
@@ -90,7 +94,20 @@ class IBLayout extends Component {
             }
         );
     }
-
+    handleUnauthorized = (event) => {
+        this.setState({
+            showUnauthorizedMessage: true,
+            unauthorizedMessage:
+                event?.detail?.message ||
+                "Your session has expired. Please refresh the page and sign in again."
+        });
+    };
+    closeUnauthorizedMessage = () => {
+        this.setState({
+            showUnauthorizedMessage: false,
+            unauthorizedMessage: ""
+        });
+    };
     getData(ibList) {
         if (!ibList || ibList.length === 0) {
             if (this.state.dataList.length > 0) {
@@ -191,11 +208,78 @@ class IBLayout extends Component {
     }
 
     render() {
-        const { releaseQue, toLinks, nameList, all_release_queues } = this.state;
+        const { releaseQue, toLinks, nameList, all_release_queues, showUnauthorizedMessage, unauthorizedMessage } = this.state;
         const filteredData = this.filterListToShow();
 
         return (
             <div className="container-fluid px-0" >
+                    {showUnauthorizedMessage && (
+                    <div
+                        style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        zIndex: 3000,
+                        background: "rgba(0,0,0,0.45)", // dark overlay
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center"
+                        }}
+                    >
+                        <div
+                        style={{
+                            background: "#ffffff",
+                            color: "#111827",
+                            padding: "24px 28px",
+                            borderRadius: "14px",
+                            boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
+                            maxWidth: "420px",
+                            width: "90%",
+                            textAlign: "center"
+                        }}
+                        >
+                        <h5 style={{ marginBottom: "12px", color: "#dc3545" }}>
+                            Session Expired
+                        </h5>
+
+                        <div style={{ marginBottom: "18px", fontSize: "0.95rem" }}>
+                            {unauthorizedMessage}
+                        </div>
+
+                        <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                            <button
+                            onClick={() => window.location.reload()}
+                            style={{
+                                padding: "8px 14px",
+                                borderRadius: "8px",
+                                border: "none",
+                                background: "#2563eb",
+                                color: "#ffffff",
+                                fontWeight: 600,
+                                cursor: "pointer"
+                            }}
+                            >
+                            Refresh Page
+                            </button>
+
+                            <button
+                            onClick={() => this.setState({ showUnauthorizedMessage: false })}
+                            style={{
+                                padding: "8px 14px",
+                                borderRadius: "8px",
+                                border: "1px solid #d1d5db",
+                                background: "#f9fafb",
+                                cursor: "pointer"
+                            }}
+                            >
+                            Close
+                            </button>
+                        </div>
+                        </div>
+                    </div>
+                    )}
                 <Navigation
                     toLinks={toLinks}
                     flaworControl={

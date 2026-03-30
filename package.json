@@ -17,8 +17,11 @@
     "react-router-dom": "^6.22.3",
     "react-scripts": "5.0.1",
     "react-table": "^7.8.0",
-    "underscore": "^1.13.7",
+    "underscore": "^1.13.8",
     "uuid": "^9.0.1"
+  },
+  "overrides": {
+    "underscore": "$underscore"
   },
   "browserslist": {
     "production": [
@@ -37,10 +40,9 @@
     "npm": ">=8 <10"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test --env=jsdom",
-    "eject": "react-scripts eject"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "_comment": "Can not configure jest unless project is 'ejected'. Witthout this configuration JEST test will fail since some node modules are not corectly transpiled",
   "_comment_code": {
@@ -63,6 +65,8 @@
     }
   },
   "devDependencies": {
-    "http-proxy-middleware": "^3.0.5"
+    "@vitejs/plugin-react": "^4.7.0",
+    "http-proxy-middleware": "^3.0.5",
+    "vite": "^6.4.1"
   }
 }
