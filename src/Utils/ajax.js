@@ -8,6 +8,36 @@ let httpWrapper = wrapper(axios, {
 
 httpWrapper.__addFilter(/\.json/);
 
+let unauthorizedEventSent = false;
+
+function handleHttpError(error) {
+    console.error(error);
+
+    const status = error?.response?.status;
+
+    if (status === 401) {
+        if (!unauthorizedEventSent) {
+            unauthorizedEventSent = true;
+
+            window.dispatchEvent(
+                new CustomEvent("app:unauthorized", {
+                    detail: {
+                        message: "Your session has expired. Please refresh the page and sign in again.",
+                        status
+                    }
+                })
+            );
+
+            // allow future 401 notifications after a short cooldown
+            setTimeout(() => {
+                unauthorizedEventSent = false;
+            }, 5000);
+        }
+    }
+
+    throw error;
+}
+
 export function getSingleFile({fileUrl, onSuccessCallback}) {
   return httpWrapper
     .get(fileUrl)
