@@ -1,7 +1,7 @@
 import {checkLabelType, getCurrentIbTag} from "./Utils/processing";
 import _ from 'underscore';
 
-const cmssdt_server = import.meta.env.VITE_CMSSDT_SERVER || "";
+const cmssdt_server = process.env.REACT_APP_CMSSDT_SERVER || "";
 export const STATUS_ENUM = {
     found: "found",
     passed: "passed",

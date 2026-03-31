@@ -392,7 +392,7 @@ const Navigation = ({ toLinks, flaworControl, archControl }) => {
               }}
             >
               <img
-              src="/CMS_logo-round.png"
+              src="CMS_logo-round.png"
               alt="CMS Offline & Computing"
               style={{
                 height: "36px",

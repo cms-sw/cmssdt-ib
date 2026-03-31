@@ -5,7 +5,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 
-import App from './App.jsx';
+import App from './App';
 import { unregister } from './registerServiceWorker';
 
 import { ShowArchProvider } from './context/ShowArchContext';

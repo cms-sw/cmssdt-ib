@@ -17,15 +17,18 @@
     "react-router-dom": "^6.22.3",
     "react-scripts": "5.0.1",
     "react-table": "^7.8.0",
-    "underscore": "^1.13.8",
+    "underscore": "^1.13.7",
     "uuid": "^9.0.1"
   },
+<<<<<<< HEAD
   "overrides": {
     "underscore": "$underscore",
     "nth-check": "^2.0.1",
     "serialize-javascript": "^7.0.2",
     "@tootallnate/once": "^3.0.1"
   },
+=======
+>>>>>>> parent of 503267e (Migrate/vite (#51))
   "browserslist": {
     "production": [
       ">0.2%",
@@ -43,9 +46,10 @@
     "npm": ">=8 <10"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
   },
   "_comment": "Can not configure jest unless project is 'ejected'. Witthout this configuration JEST test will fail since some node modules are not corectly transpiled",
   "_comment_code": {
@@ -68,8 +72,6 @@
     }
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.7.0",
-    "http-proxy-middleware": "^3.0.5",
-    "vite": "^6.4.1"
+    "http-proxy-middleware": "^3.0.5"
   }
 }
