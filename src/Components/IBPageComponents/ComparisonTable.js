@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { OverlayTrigger, Table, Tooltip, Badge } from "react-bootstrap";
+import { OverlayTrigger, Table, Tooltip } from "react-bootstrap";
 import {
   checkLabelType,
   getAllActiveArchitecturesFromIBGroupByFlavor,
@@ -16,7 +16,6 @@ import {
   FaCheckCircle,
   FaExclamationTriangle,
   FaQuestionCircle,
-  FaTimesCircle,
   FaInfoCircle,
   FaCheck,
   FaTimes,
@@ -25,12 +24,17 @@ import {
   FaTag,
   FaExternalLinkAlt,
   FaBug,
-  FaWrench
+  FaWrench,
+  FaTools,
+  FaVial,
+  FaPlus,
+  FaClipboardList,
+  FaLayerGroup,
+  FaCubes
 } from 'react-icons/fa';
 
 const { tooltipDelayInMs, urls } = config;
 
-// Compact theme with reduced sizes
 const THEME = {
   primary: '#64748b',
   primaryLight: '#94a3b8',
@@ -61,7 +65,6 @@ const THEME = {
   }
 };
 
-// Compact sphere styles - perfectly circular with enhanced 3D effects
 const sphereStyles = {
   sphere: {
     display: 'inline-flex',
@@ -125,7 +128,6 @@ const sphereStyles = {
   }
 };
 
-// Compact flavor cards
 const FLAVOR_CARDS = Array.from({ length: 6 }).map(() => ({
   bg: 'linear-gradient(135deg, #64748b 0%, #475569 100%)',
   text: '#ffffff',
@@ -148,7 +150,7 @@ const statusStyles = {
   },
   warning: {
     sphereStyle: sphereStyles.sphereWarning,
-    sphereIcon: <FaExclamationTriangle size={12} />,
+    sphereIcon: null,
     description: 'Warnings detected',
     action: 'Click to review warnings',
   },
@@ -166,10 +168,18 @@ const statusStyles = {
   }
 };
 
+const rowLabelConfig = {
+  builds: { text: 'Builds', icon: <FaCubes size={12} /> },
+  utests: { text: 'Unit', icon: <FaVial size={12} /> },
+  relvals: { text: 'RelVal', icon: <FaLayerGroup size={12} /> },
+  addons: { text: 'AddOn', icon: <FaPlus size={12} /> },
+  dupDict: { text: 'Q/A', icon: <FaClipboardList size={12} /> }
+};
+
 const checkIfItIsAPatch = (current_tag, architecture, tagName) => {
   const intendedTagName1 = `IB/${current_tag}/${architecture}`;
   const intendedTagName2 = `ERR/${current_tag}/${architecture}`;
-  return (tagName !== intendedTagName1 && tagName !== intendedTagName2);
+  return tagName !== intendedTagName1 && tagName !== intendedTagName2;
 };
 
 const removeKeysFromDetails = (details, keysToRemove = []) => {
@@ -180,6 +190,22 @@ const removeKeysFromDetails = (details, keysToRemove = []) => {
   });
   return filtered;
 };
+
+const formatFlavorLabel = (value) => getDisplayName(value).replace(/_X$/, '');
+
+function renderStickyRowLabel(typeKey, color = THEME.text.primary) {
+  const cfg = rowLabelConfig[typeKey];
+  if (!cfg) return null;
+
+  return (
+    <>
+      <span className="type-label-desktop">{cfg.text}</span>
+      <span className="type-label-mobile" style={{ color }} title={cfg.text}>
+        {cfg.icon}
+      </span>
+    </>
+  );
+}
 
 const ArchTooltip = ({ cmsdistTag, isPatch, baseTag }) => (
   <div className="text-start p-3" style={{ minWidth: '280px' }}>
@@ -234,7 +260,11 @@ const StatusTooltip = ({ status, value, details, type }) => {
   const formatValue = (val) => {
     if (val === null || val === undefined) return '—';
     if (typeof val === 'object') {
-      try { return JSON.stringify(val); } catch { return '[Complex Data]'; }
+      try {
+        return JSON.stringify(val);
+      } catch {
+        return '[Complex Data]';
+      }
     }
     return String(val);
   };
@@ -254,7 +284,15 @@ const StatusTooltip = ({ status, value, details, type }) => {
           <span className="text-muted small fw-semibold">Current Status:</span>
         </div>
         <div className="d-flex align-items-center mt-1">
-          <div style={{ ...sphereStyles.sphere, ...style.sphereStyle, width: '28px', height: '28px', marginRight: '8px' }}>
+          <div
+            style={{
+              ...sphereStyles.sphere,
+              ...style.sphereStyle,
+              width: '28px',
+              height: '28px',
+              marginRight: '8px'
+            }}
+          >
             {style.sphereIcon}
           </div>
           <span className="small">{style.description}</span>
@@ -314,12 +352,19 @@ function renderCell(cellInfo) {
   );
 }
 
-// Enhanced renderSphere
 function renderSphere({ status = "secondary", value, icon, link, tooltipContent, details, type } = {}) {
   const style = statusStyles[status] || statusStyles.secondary;
   const displayValue = value !== undefined ? value : '';
 
   if (displayValue === 0 || displayValue === '') return null;
+
+  const hasNumericValue =
+    typeof displayValue === 'number' ||
+    (typeof displayValue === 'string' && /\d/.test(displayValue));
+
+  const resolvedIcon = hasNumericValue
+    ? null
+    : (icon === null ? null : (icon || style.sphereIcon));
 
   const sphereContent = (
     <div
@@ -327,7 +372,7 @@ function renderSphere({ status = "secondary", value, icon, link, tooltipContent,
       style={{
         ...sphereStyles.sphere,
         ...style.sphereStyle,
-        minWidth: displayValue.toString().length > 2 ? '36px' : '30px',
+        minWidth: String(displayValue).length > 2 ? '36px' : '30px',
         width: 'auto',
         borderRadius: '50%',
       }}
@@ -341,14 +386,19 @@ function renderSphere({ status = "secondary", value, icon, link, tooltipContent,
       <div style={sphereStyles.sphereGlow} />
       <div style={sphereStyles.sphereReflection} />
       <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center' }}>
-        {icon || style.sphereIcon}
-        <span className="ms-1">{displayValue}</span>
+        {resolvedIcon}
+        <span className={resolvedIcon ? 'ms-1' : ''}>{displayValue}</span>
       </div>
     </div>
   );
 
   const enhancedTooltip = tooltipContent || (
-    <StatusTooltip status={status} value={displayValue} details={details ? { ...details } : {}} type={type} />
+    <StatusTooltip
+      status={status}
+      value={displayValue}
+      details={details ? { ...details } : {}}
+      type={type}
+    />
   );
 
   const wrappedContent = link ? (
@@ -382,7 +432,7 @@ const getOtherTestUrl = ({ file }) => {
 const statusIcons = {
   success: <FaCheck className="me-1" size={10} />,
   danger: <FaTimes className="me-1" size={10} />,
-  warning: <FaExclamationTriangle className="me-1" size={10} />,
+  warning: null,
   secondary: <FaQuestionCircle className="me-1" size={10} />,
   info: <FaPlay className="me-1" size={10} />
 };
@@ -409,7 +459,7 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
   const renderRowCells = ({ resultType, ifWarning, ifError, ifFailed, ifPassed, ifUnknown }) => {
     return data.map((ib, pos) => {
       const el = archsByIb[pos];
-      return (el?.archs || []).map(arch => {
+      return (el?.archs || []).map((arch) => {
         const results = _.findWhere(ib[resultType] || [], { arch });
         if (!results) return renderCell(<span className="text-muted">—</span>);
 
@@ -428,50 +478,70 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
         switch (results.passed) {
           case true:
           case "passed":
-            return ifPassed ? ifPassed(results, ib.release_name) : renderCell(renderSphere({
-              status: 'success',
-              icon: <FaCheck />,
-              value: results.details?.num_passed || '✓',
-              type: resultType,
-              details: results.details
-            }) || <span className="text-muted">—</span>);
+            return ifPassed
+              ? ifPassed(results, ib.release_name)
+              : renderCell(
+                  renderSphere({
+                    status: 'success',
+                    icon: <FaCheck />,
+                    value: results.details?.num_passed || '✓',
+                    type: resultType,
+                    details: results.details
+                  }) || <span className="text-muted">—</span>
+                );
 
           case false:
           case "error":
-            return ifError ? ifError(results, ib.release_name) : renderCell(renderSphere({
-              status: 'danger',
-              icon: <FaTimes />,
-              value: results.details?.num_errors || '✗',
-              type: resultType,
-              details: results.details
-            }) || <span className="text-muted">—</span>);
+            return ifError
+              ? ifError(results, ib.release_name)
+              : renderCell(
+                  renderSphere({
+                    status: 'danger',
+                    icon: <FaTimes />,
+                    value: results.details?.num_errors || '✗',
+                    type: resultType,
+                    details: results.details
+                  }) || <span className="text-muted">—</span>
+                );
 
           case "failed":
-            return ifFailed ? ifFailed(results, ib.release_name) : renderCell(renderSphere({
-              status: 'danger',
-              icon: <FaTimes />,
-              value: results.details?.num_fails || '!',
-              type: resultType,
-              details: results.details
-            }) || <span className="text-muted">—</span>);
+            return ifFailed
+              ? ifFailed(results, ib.release_name)
+              : renderCell(
+                  renderSphere({
+                    status: 'danger',
+                    icon: <FaTimes />,
+                    value: results.details?.num_fails || '!',
+                    type: resultType,
+                    details: results.details
+                  }) || <span className="text-muted">—</span>
+                );
 
           case "warning":
-            return ifWarning ? ifWarning(results, ib.release_name) : renderCell(renderSphere({
-              status: 'warning',
-              icon: <FaExclamationTriangle />,
-              value: results.details?.num_warnings || '⚠',
-              type: resultType,
-              details: results.details
-            }) || <span className="text-muted">—</span>);
+            return ifWarning
+              ? ifWarning(results, ib.release_name)
+              : renderCell(
+                  renderSphere({
+                    status: 'warning',
+                    icon: null,
+                    value: results.details?.num_warnings || '⚠',
+                    type: resultType,
+                    details: results.details
+                  }) || <span className="text-muted">—</span>
+                );
 
           case "unknown":
-            return ifUnknown ? ifUnknown(arch, ib) : renderCell(renderSphere({
-              status: 'secondary',
-              icon: <FaQuestionCircle />,
-              value: ' ',
-              type: resultType,
-              details: { status: 'Unknown' }
-            }) || <span className="text-muted">—</span>);
+            return ifUnknown
+              ? ifUnknown(arch, ib)
+              : renderCell(
+                  renderSphere({
+                    status: 'secondary',
+                    icon: <FaQuestionCircle />,
+                    value: ' ',
+                    type: resultType,
+                    details: { status: 'Unknown' }
+                  }) || <span className="text-muted">—</span>
+                );
 
           default:
             return renderCell(<span className="text-muted">—</span>);
@@ -493,9 +563,9 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
     let labelConfig = { value: 0, colorType: 'secondary' };
 
     for (let el of labelConfigArray) {
-      el.groupFields.forEach(predicate => {
+      el.groupFields.forEach((predicate) => {
         if (typeof predicate === "function") {
-          resultKeys.forEach(key => {
+          resultKeys.forEach((key) => {
             if (predicate(key)) labelConfig.value += details[key] * 1;
           });
         } else {
@@ -511,10 +581,13 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
     if (labelConfig.value === 0) return renderCell(<span className="text-muted">—</span>);
     if (done === false) labelConfig.value = `${labelConfig.value}*`;
 
-    const status = labelConfig.colorType === 'danger' ? 'danger'
-      : labelConfig.colorType === 'warning' ? 'warning'
-      : labelConfig.colorType === 'success' ? 'success'
-      : 'secondary';
+    const status = labelConfig.colorType === 'danger'
+      ? 'danger'
+      : labelConfig.colorType === 'warning'
+        ? 'warning'
+        : labelConfig.colorType === 'success'
+          ? 'success'
+          : 'secondary';
 
     let resultType = 'Build';
     if (getUrl === getOtherTestUrl) resultType = 'Other Tests';
@@ -537,29 +610,42 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
 
   const showRelValsResults = (labelConfigArray = [], getUrl) => (result, ib) => {
     const { details, done } = result;
-    const labelConfig = checkLabelType(labelConfigArray, details) || { value: 0, colorType: "secondary" };
+    const labelConfig = checkLabelType(labelConfigArray, details) || {
+      value: 0,
+      colorType: "secondary"
+    };
 
     if (labelConfig.value === 0) return renderCell(<span className="text-muted">—</span>);
     if (done === false) labelConfig.value += '*';
 
     let selectedStatus = '';
     switch (labelConfig.colorType) {
-      case "danger": selectedStatus = "&selectedStatus=failed"; break;
-      case "warning": selectedStatus = "&selectedFlavors=X&selectedStatus=failed&selectedStatus=known_failed"; break;
-      case "success": selectedStatus = "&selectedFlavors=X&selectedStatus=failed&selectedStatus=known_failed&selectedStatus=passed"; break;
-      default: break;
+      case "danger":
+        selectedStatus = "&selectedStatus=failed";
+        break;
+      case "warning":
+        selectedStatus = "&selectedFlavors=X&selectedStatus=failed&selectedStatus=known_failed";
+        break;
+      case "success":
+        selectedStatus = "&selectedFlavors=X&selectedStatus=failed&selectedStatus=known_failed&selectedStatus=passed";
+        break;
+      default:
+        break;
     }
 
-    const status = labelConfig.colorType === 'danger' ? 'danger'
-      : labelConfig.colorType === 'warning' ? 'warning'
-      : labelConfig.colorType === 'success' ? 'success'
-      : 'secondary';
+    const status = labelConfig.colorType === 'danger'
+      ? 'danger'
+      : labelConfig.colorType === 'warning'
+        ? 'warning'
+        : labelConfig.colorType === 'success'
+          ? 'success'
+          : 'secondary';
 
     const cell = renderSphere({
       status,
       icon: statusIcons[status],
       value: labelConfig.value,
-      details: details,
+      details,
       type: 'RelVal',
       link: getUrl({ file: result.file, arch: result.arch, ibName: ib, selectedStatus })
     });
@@ -567,11 +653,11 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
     return renderCell(cell || <span className="text-muted">—</span>);
   };
 
-  const shouldShowRow = resultType => {
+  const shouldShowRow = (resultType) => {
     return data.reduce((sum, ib, pos) => {
       const el = archsByIb[pos] || {};
       const count = (el.archs || [])
-        .map(arch => _.findWhere(ib[resultType] || [], { arch }) ? 1 : 0)
+        .map((arch) => (_.findWhere(ib[resultType] || [], { arch }) ? 1 : 0))
         .reduce((a, b) => a + b, 0);
       return sum + count;
     }, 0) > 0;
@@ -621,6 +707,19 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                 font-weight: 700;
                 width: 78px;
                 min-width: 78px;
+                text-align: center;
+              }
+
+              .type-label-mobile,
+              .type-header-mobile {
+                display: none;
+              }
+
+              .type-label-desktop,
+              .type-header-desktop {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
               }
 
               .table thead tr:first-child th {
@@ -656,28 +755,47 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                 white-space: nowrap;
                 line-height: 1.1;
               }
-              .arch-stack-item:last-child { border-bottom: none; }
 
-              .patch-badge {
-                margin-top: 6px;
-                display: flex;
-                justify-content: center;
-              }
-
-              .patch-badge-pill {
-                font-size: 0.75rem !important;
-                padding: 4px 10px !important;
-                border-radius: 999px !important;
-                font-weight: 900 !important;
-                letter-spacing: 0.3px;
+              .arch-stack-item:last-child {
+                border-bottom: none;
               }
 
               .sphere-success svg {
                 color: #ffffff !important;
                 fill: #ffffff !important;
               }
+
               .enhanced-sphere svg {
                 fill: currentColor;
+              }
+
+              @media (max-width: 768px) {
+                .name-column {
+                  width: 42px !important;
+                  min-width: 42px !important;
+                  padding: 0.2rem 0.1rem !important;
+                }
+
+                .type-label-desktop,
+                .type-header-desktop {
+                  display: none !important;
+                }
+
+                .type-label-mobile,
+                .type-header-mobile {
+                  display: inline-flex !important;
+                  align-items: center;
+                  justify-content: center;
+                }
+
+                .name-column svg {
+                  font-size: 0.9rem;
+                }
+
+                .arch-stack-item {
+                  padding: 4px 6px;
+                  font-size: 0.78rem;
+                }
               }
             `}
           </style>
@@ -687,16 +805,17 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
             bordered
             hover
             className="mb-0 align-middle"
-            style={{
-              fontSize: '0.78rem'
-            }}
+            style={{ fontSize: '0.78rem' }}
           >
             <thead>
               <tr>
                 <th className="name-column" rowSpan={2} style={{ verticalAlign: 'middle' }}>
                   <div className="d-flex align-items-center justify-content-center h-100">
-                    <span className="fw-bold text-uppercase" style={{ fontSize: '0.8rem' }}>
+                    <span className="type-header-desktop fw-bold text-uppercase" style={{ fontSize: '0.8rem' }}>
                       Type
+                    </span>
+                    <span className="type-header-mobile fw-bold text-uppercase" style={{ fontSize: '0.7rem' }}>
+                      
                     </span>
                   </div>
                 </th>
@@ -727,16 +846,14 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                         margin: '0 auto'
                       }}
                     >
-                      {getDisplayName(item.flavor)}
+                      {formatFlavorLabel(item.flavor)}
                     </div>
                   </th>
                 ))}
               </tr>
 
               <tr>
-                {archsByIb.map(item => (item.archs || []).map((arch) => {
-                  let patchOrFullBuild = '---';
-                  let labelType = 'secondary';
+                {archsByIb.map((item) => (item.archs || []).map((arch) => {
                   let link = null;
                   let isPatch = false;
                   let baseTag = '';
@@ -749,40 +866,44 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                     isPatch = checkIfItIsAPatch(current_tag, arch, cmsdistTag);
                     if (isPatch) {
                       baseTag = cmsdistTag.replace('IB/', '').replace(`/${arch}`, '');
-                      patchOrFullBuild = 'PATCH';
-                      labelType = 'warning';
-                    } else {
-                      patchOrFullBuild = 'FULL BUILD';
-                      labelType = 'success';
                     }
                   }
 
                   const archParts = arch.split("_");
+
+                  const buildTypePrefixIcon = cmsdistTag && cmsdistTag !== "Not Found"
+                    ? (
+                        isPatch
+                          ? <FaTools size={15} style={{ color: '#facc15', marginRight: '6px' }} />
+                          : <FaWrench size={15} style={{ marginRight: '6px' }} />
+                      )
+                    : null;
+
                   const archStack = (
                     <div className="arch-stack">
                       {archParts.map((str, idx) => {
                         const backgroundColor = archColorScheme[str] || THEME.secondary;
+                        const isFirstRow = idx === 0;
+
                         return (
                           <div key={idx} className="arch-stack-item" style={{ backgroundColor }}>
-                            <strong>{str}</strong>
+                            <strong
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              {isFirstRow && buildTypePrefixIcon}
+                              {str}
+                            </strong>
                           </div>
                         );
                       })}
                     </div>
                   );
 
-                  const cellInner = (
-                    <>
-                      {archStack}
-                      {cmsdistTag && cmsdistTag !== "Not Found" && (
-                        <div className="patch-badge">
-                          <Badge bg={labelType} className="patch-badge-pill">
-                            {patchOrFullBuild}
-                          </Badge>
-                        </div>
-                      )}
-                    </>
-                  );
+                  const cellInner = <>{archStack}</>;
 
                   const cellContent = link ? (
                     <OverlayTrigger
@@ -821,36 +942,82 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
             <tbody>
               {shouldShowRow("builds") && (
                 <tr>
-                  <td className="name-column fw-semibold">Builds</td>
-                  {renderRowCells({
-                    resultType: 'builds',
-                    ifPassed: (details, ibName) => renderCell(renderSphere({
-                      status: 'success',
-                      icon: <FaCheck />,
-                      value: ' ',
-                      type: 'Builds',
-                      details:{},
-                      link: getBuildOrUnitUrl({ file: details.file, arch: details.arch, ibName })
-                    })),
-                    ifError: showGeneralResults([
-                      { groupFields: [(key) => key.includes("Error")], color: "danger" },
-                      { groupFields: ["compWarning"], color: "warning" }
-                    ], getBuildOrUnitUrl),
-                    ifFailed: showGeneralResults([
-                      { groupFields: [(key) => key.includes("Error")], color: "danger" },
-                      { groupFields: ["compWarning"], color: "warning" }
-                    ], getBuildOrUnitUrl),
-                    ifWarning: showGeneralResults([
-                      { groupFields: [(key) => key.includes("Error")], color: "danger" },
-                      { groupFields: ["compWarning"], color: "warning" }
-                    ], getBuildOrUnitUrl)
+                  <td className="name-column fw-semibold">
+                    {renderStickyRowLabel('builds')}
+                  </td>
+                  {data.map((ib, pos) => {
+                    const el = archsByIb[pos];
+                    return (el?.archs || []).map((arch) => {
+                      const results = _.findWhere(ib.builds || [], { arch });
+                      if (!results) return renderCell(<span className="text-muted">—</span>);
+
+                      if (_.isEmpty(results)) {
+                        return renderCell(
+                          renderSphere({
+                            status: 'secondary',
+                            icon: <FaQuestionCircle />,
+                            value: '?',
+                            type: 'Builds',
+                            details: { status: 'No data available' },
+                            link: getBuildOrUnitUrl({
+                              file: results.file,
+                              arch: results.arch,
+                              ibName: ib.release_name
+                            })
+                          }) || <span className="text-muted">—</span>
+                        );
+                      }
+
+                      switch (results.passed) {
+                        case true:
+                        case "passed":
+                          return renderCell(
+                            renderSphere({
+                              status: 'success',
+                              icon: <FaCheck />,
+                              value: ' ',
+                              type: 'Builds',
+                              details: {},
+                              link: getBuildOrUnitUrl({
+                                file: results.file,
+                                arch: results.arch,
+                                ibName: ib.release_name
+                              })
+                            })
+                          );
+
+                        case false:
+                        case "error":
+                          return showGeneralResults([
+                            { groupFields: [(key) => key.includes("Error")], color: "danger" },
+                            { groupFields: ["compWarning"], color: "warning" }
+                          ], getBuildOrUnitUrl)(results, ib.release_name);
+
+                        case "failed":
+                          return showGeneralResults([
+                            { groupFields: [(key) => key.includes("Error")], color: "danger" },
+                            { groupFields: ["compWarning"], color: "warning" }
+                          ], getBuildOrUnitUrl)(results, ib.release_name);
+
+                        case "warning":
+                          return showGeneralResults([
+                            { groupFields: [(key) => key.includes("Error")], color: "danger" },
+                            { groupFields: ["compWarning"], color: "warning" }
+                          ], getBuildOrUnitUrl)(results, ib.release_name);
+
+                        default:
+                          return renderCell(<span className="text-muted">—</span>);
+                      }
+                    });
                   })}
                 </tr>
               )}
 
               {shouldShowRow("utests") && (
                 <tr>
-                  <td className="name-column fw-semibold">Unit</td>
+                  <td className="name-column fw-semibold">
+                    {renderStickyRowLabel('utests')}
+                  </td>
                   {renderRowCells({
                     resultType: 'utests',
                     ifPassed: (details, ibName) => renderCell(renderSphere({
@@ -858,7 +1025,7 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                       icon: <FaCheck />,
                       value: details.details?.num_passed || ' ',
                       type: 'Unit Tests',
-                      details: {}, 
+                      details: {},
                       link: getBuildOrUnitUrl({
                         file: details.file,
                         arch: details.arch,
@@ -876,8 +1043,16 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
               {shouldShowRow("relvals") && (
                 <tr>
                   <td className="name-column fw-semibold">
-                    <a href={urls.newRelVals(que, date)} className="text-decoration-none" style={{ color: THEME.primary }}>
-                      RelVal
+                    <a
+                      href={urls.newRelVals(que, date)}
+                      className="text-decoration-none d-flex align-items-center justify-content-center"
+                      style={{ color: THEME.primary, height: '100%' }}
+                      title="RelVal"
+                    >
+                      <span className="type-label-desktop">RelVal</span>
+                      <span className="type-label-mobile">
+                        <FaLayerGroup size={12} />
+                      </span>
                     </a>
                   </td>
                   {renderRowCells({
@@ -892,7 +1067,9 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
 
               {shouldShowRow("addons") && (
                 <tr>
-                  <td className="name-column fw-semibold">AddOn</td>
+                  <td className="name-column fw-semibold">
+                    {renderStickyRowLabel('addons')}
+                  </td>
                   {renderRowCells({
                     resultType: 'addons',
                     ifPassed: (details, ibName) => renderCell(renderSphere({
@@ -919,7 +1096,9 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
 
               {shouldShowRow("dupDict") && (
                 <tr>
-                  <td className="name-column fw-semibold">Q/A</td>
+                  <td className="name-column fw-semibold">
+                    {renderStickyRowLabel('dupDict')}
+                  </td>
                   {renderRowCells({
                     resultType: 'dupDict',
                     ifPassed: (details, ibName) => renderCell(renderSphere({
@@ -933,7 +1112,7 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                     ifError: (details, ibName) => renderCell(renderSphere({
                       status: 'danger',
                       icon: <FaTimes />,
-                      value: '!',
+                      value: ' ',
                       type: 'Q/A',
                       details: { status: 'Duplicate found' },
                       link: urls.q_a(details.arch, ibName)

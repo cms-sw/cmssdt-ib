@@ -21,7 +21,10 @@
     "uuid": "^9.0.1"
   },
   "overrides": {
-    "underscore": "$underscore"
+    "underscore": "$underscore",
+    "nth-check": "^2.0.1",
+    "serialize-javascript": "^7.0.2",
+    "@tootallnate/once": "^3.0.1"
   },
   "browserslist": {
     "production": [
