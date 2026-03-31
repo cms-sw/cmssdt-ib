@@ -17,8 +17,14 @@
     "react-router-dom": "^6.22.3",
     "react-scripts": "5.0.1",
     "react-table": "^7.8.0",
-    "underscore": "^1.13.7",
+    "underscore": "^1.13.8",
     "uuid": "^9.0.1"
+  },
+  "overrides": {
+    "underscore": "$underscore",
+    "nth-check": "^2.0.1",
+    "serialize-javascript": "^7.0.2",
+    "@tootallnate/once": "^3.0.1"
   },
   "browserslist": {
     "production": [

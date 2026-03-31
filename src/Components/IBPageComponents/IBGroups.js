@@ -210,7 +210,7 @@ class IBGroups extends Component {
 
     renderFloatingToggle() {
         const { expandAllCommits, isToggleLoading } = this.state;
-        const NAVBAR_OFFSET = 200;
+        const NAVBAR_OFFSET = 72;
 
         return (
             <div
