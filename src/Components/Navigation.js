@@ -37,8 +37,13 @@ import {
   FaPlus,
   FaClipboardList,
   FaCheck,
-  FaTimes
+  FaTimes,
+  FaArrowUp,
+  FaArrowDown,
+  FaThumbtack,
+  FaMinus
 } from "react-icons/fa";
+import { GoGitPullRequest } from "react-icons/go";
 
 import { config } from "../config";
 import { getComReleaseFromQue } from "../Utils/processing";
@@ -191,6 +196,45 @@ const GuideCard = ({ icon, title, text }) => (
         flexShrink: 0
       }}
     >
+      {icon}
+    </span>
+    <div>
+      <div className="fw-semibold mb-1">{title}</div>
+      <small className="text-muted">{text}</small>
+    </div>
+  </div>
+);
+const FloatingControlBadge = ({
+  children,
+  bg = "#ffffff",
+  color = "#334155",
+  border = "#cbd5e1",
+  size = 44,
+  rounded = "50%"
+}) => (
+  <span
+    className="d-inline-flex align-items-center justify-content-center position-relative"
+    style={{
+      width: size,
+      height: size,
+      borderRadius: rounded,
+      background: bg,
+      color,
+      border: `1px solid ${border}`,
+      boxShadow: "0 6px 14px rgba(15, 23, 42, 0.12)",
+      flexShrink: 0
+    }}
+  >
+    {children}
+  </span>
+);
+
+const FloatingControlCard = ({ icon, title, text }) => (
+  <div
+    className="d-flex align-items-start p-3 rounded-3 h-100"
+    style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+  >
+    <span className="me-3" style={{ flexShrink: 0 }}>
       {icon}
     </span>
     <div>
@@ -673,7 +717,92 @@ const Navigation = ({ toLinks, flaworControl, archControl }) => {
                 </div>
               </div>
             </div>
+            <div className="mb-4">
+  <div className="fw-semibold mb-3" style={{ color: THEME.text.primary, fontSize: "1rem" }}>
+    Page Controls
+  </div>
 
+  <div className="row g-3">
+    <div className="col-md-6">
+      <FloatingControlCard
+        icon={
+          <FloatingControlBadge bg="#ffffff" color="#334155" border="#cbd5e1">
+            <GoGitPullRequest size={20} />
+            <span
+              style={{
+                position: "absolute",
+                top: 3,
+                right: 3,
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                background: "#22c55e",
+                color: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 9,
+                boxShadow: "0 2px 6px rgba(0,0,0,0.18)"
+              }}
+            >
+              <FaPlus size={8} />
+            </span>
+          </FloatingControlBadge>
+        }
+        title="Expand all commits & PRs"
+        text="Open all commit and pull request sections at once. The same control can also collapse them again."
+      />
+    </div>
+
+    <div className="col-md-6">
+      <FloatingControlCard
+        icon={
+          <FloatingControlBadge bg="#ffffff" color="#334155" border="#cbd5e1">
+            <FaArrowUp size={13} />
+          </FloatingControlBadge>
+        }
+        title="Go to top"
+        text="Scroll quickly to the top of the page."
+      />
+    </div>
+
+    <div className="col-md-6">
+      <FloatingControlCard
+        icon={
+          <FloatingControlBadge bg="#ffffff" color="#334155" border="#cbd5e1">
+            <FaArrowDown size={13} />
+          </FloatingControlBadge>
+        }
+        title="Go to bottom"
+        text="Scroll quickly to the bottom of the page."
+      />
+    </div>
+
+    <div className="col-md-6">
+      <FloatingControlCard
+        icon={
+          <span
+            className="d-inline-flex align-items-center justify-content-center"
+            style={{
+              width: 44,
+              height: 52,
+              borderRadius: 12,
+              background: "rgba(255,255,255,0.98)",
+              color: "#334155",
+              border: "1px solid #cbd5e1",
+              boxShadow: "0 6px 14px rgba(15, 23, 42, 0.12)",
+              flexShrink: 0
+            }}
+          >
+            <FaThumbtack size={13} />
+          </span>
+        }
+        title="Jump to release"
+        text="Open the release navigator and jump directly to a release section."
+      />
+    </div>
+  </div>
+</div>
             <div className="mb-4">
               <div className="fw-semibold mb-3" style={{ color: THEME.text.primary, fontSize: "1rem" }}>
                 Status Indicators
