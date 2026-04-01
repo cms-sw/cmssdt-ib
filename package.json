@@ -20,15 +20,11 @@
     "underscore": "^1.13.7",
     "uuid": "^9.0.1"
   },
-<<<<<<< HEAD
   "overrides": {
     "underscore": "$underscore",
     "nth-check": "^2.0.1",
-    "serialize-javascript": "^7.0.2",
     "@tootallnate/once": "^3.0.1"
   },
-=======
->>>>>>> parent of 503267e (Migrate/vite (#51))
   "browserslist": {
     "production": [
       ">0.2%",
