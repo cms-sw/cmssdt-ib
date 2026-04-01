@@ -150,7 +150,7 @@ const statusStyles = {
   },
   warning: {
     sphereStyle: sphereStyles.sphereWarning,
-    sphereIcon: null,
+    sphereIcon: <FaExclamationTriangle size={12} />,
     description: 'Warnings detected',
     action: 'Click to review warnings',
   },
@@ -245,12 +245,12 @@ const ArchTooltip = ({ cmsdistTag, isPatch, baseTag }) => (
         </div>
       </div>
     )}
-
-    <div className="d-flex justify-content-end mt-3 pt-2 border-top">
+    {/*disabled the footer-can be used in future*/}
+    {/* <div className="d-flex justify-content-end mt-3 pt-2 border-top">
       <small className="text-primary d-flex align-items-center fw-semibold">
         Click to view commits <FaExternalLinkAlt className="ms-1" size={10} />
       </small>
-    </div>
+    </div> */}
   </div>
 );
 
@@ -268,6 +268,9 @@ const StatusTooltip = ({ status, value, details, type }) => {
     }
     return String(val);
   };
+const hasNumericValue =
+    typeof value === 'number' ||
+    (typeof value === 'string' && /\d/.test(value));
 
   return (
     <div className="text-start p-3" style={{ minWidth: '250px' }}>
@@ -320,13 +323,29 @@ const StatusTooltip = ({ status, value, details, type }) => {
           </div>
         </div>
       )}
+        {/* Disabled the footer.May be used to show something in future */}
+        {/* <div className="d-flex justify-content-end mt-2 pt-2 border-top">
+          <small className="text-muted d-flex align-items-center">
 
-      <div className="d-flex justify-content-end mt-2 pt-2 border-top">
-        <small className="text-muted d-flex align-items-center">
-          <FaWrench className="me-1" size={10} />
-          {style.action}
-        </small>
-      </div>
+            <div
+              style={{
+                ...sphereStyles.sphere,
+                ...style.sphereStyle,
+                width: '30px',
+                height: '30px',
+                fontSize: '12px',
+                marginRight: '6px',
+                minWidth: '18px',
+                padding: '0 4px',
+                borderRadius: '10px'
+              }}
+            >
+              {hasNumericValue ? value : style.sphereIcon}
+            </div>
+
+            {style.action}
+          </small>
+        </div> */}
     </div>
   );
 };
@@ -739,6 +758,10 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                 max-width: 350px;
                 border-radius: 12px;
                 padding: 0;
+                opacity: 1 !important;
+              }
+              .custom-tooltip {
+                opacity: 1 !important;
               }
 
               .custom-tooltip .tooltip-arrow::before {
