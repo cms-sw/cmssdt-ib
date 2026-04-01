@@ -41,7 +41,7 @@ import {
 
 const { githubCompareTags, githubRepo, githubRepoTag } = config.urls;
 
-/** Memory cache TTLs */
+/** TTLs */
 const LABELS_MEMORY_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const PR_MEMORY_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -91,14 +91,14 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: "0.5rem",
+    gap: "0.4rem",
     cursor: "pointer",
-    userSelect: "none"
+    userSelect: "20px"
   },
   cardHeaderContent: {
     display: "flex",
     alignItems: "center",
-    gap: "0.6rem",
+    gap: "0.45rem",
     flexWrap: "wrap"
   },
   cardBody: {
@@ -109,12 +109,13 @@ const styles = {
     backgroundColor: THEME.surface,
     border: `1px solid ${THEME.border}`,
     borderRadius: "999px",
-    padding: "0.25rem 0.75rem",
-    fontSize: "0.8rem",
+    padding: "0.14rem 0.5rem",
+    fontSize: "0.7rem",
     color: THEME.text.secondary,
     display: "flex",
     alignItems: "center",
-    gap: "0.4rem"
+    gap: "0.28rem",
+     lineHeight: 1
   },
   comparisonAlert: {
     backgroundColor: THEME.surfaceMuted,
@@ -1797,8 +1798,8 @@ class Commits extends Component {
             }
           >
             <div style={styles.cardHeaderContent}>
-              <GoGitPullRequest size={20} style={{ color: THEME.primary }} />
-              <span style={{ fontSize: "0.95rem" }}>Pull Requests</span>
+              <GoGitPullRequest size={18} style={{ color: THEME.primary }} />
+              <span style={{ fontSize: "0.90rem" }}>Pull Requests</span>
             </div>
 
             <div style={styles.expandButton}>

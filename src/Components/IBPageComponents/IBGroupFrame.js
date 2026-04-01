@@ -137,7 +137,7 @@ class IBGroupFrame extends PureComponent {
                     )}
                 </Card.Header>
 
-                <Card.Body>
+                <Card.Body style={{ padding: "0.25rem 0.5rem 0.5rem 0.5rem" }}>
                     {statusLabels}
                     {comparisonTable}
                     <Commits

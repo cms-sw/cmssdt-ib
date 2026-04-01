@@ -25,7 +25,20 @@ import {
   BsChevronUp,
   BsChevronDown
 } from "react-icons/bs";
-import { FaCodeBranch, FaCode, FaCubes } from "react-icons/fa";
+
+import {
+  FaCodeBranch,
+  FaCode,
+  FaCubes,
+  FaTools,
+  FaWrench,
+  FaVial,
+  FaLayerGroup,
+  FaPlus,
+  FaClipboardList,
+  FaCheck,
+  FaTimes
+} from "react-icons/fa";
 
 import { config } from "../config";
 import { getComReleaseFromQue } from "../Utils/processing";
@@ -120,6 +133,72 @@ const popoverIssues = (
   </Popover>
 );
 
+const guideSphereStyles = {
+  base: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: "34px",
+    height: "34px",
+    borderRadius: "50%",
+    padding: "0 8px",
+    color: "#fff",
+    fontSize: "0.82rem",
+    fontWeight: 700,
+    textShadow: "0 1px 2px rgba(0,0,0,0.25)",
+    border: "1px solid rgba(255,255,255,0.18)",
+    position: "relative",
+    boxSizing: "border-box"
+  },
+  success: {
+    background: "radial-gradient(circle at 30% 25%, #79C779 0%, #5EB85E 50%, #3E9A3E 90%)",
+    boxShadow: "0 4px 10px -2px rgba(16, 185, 129, 0.35), inset 0 -3px 0 rgba(0,0,0,0.18)"
+  },
+  danger: {
+    background: "radial-gradient(circle at 30% 25%, #f87171 0%, #ef4444 50%, #dc2626 90%)",
+    boxShadow: "0 4px 10px -2px rgba(239, 68, 68, 0.35), inset 0 -3px 0 rgba(0,0,0,0.18)"
+  },
+  warning: {
+    background: "radial-gradient(circle at 30% 25%, #fbbf24 0%, #f59e0b 50%, #d97706 90%)",
+    boxShadow: "0 4px 10px -2px rgba(245, 158, 11, 0.35), inset 0 -3px 0 rgba(0,0,0,0.18)"
+  }
+};
+
+const GuideSphere = ({ variant = "success", children }) => (
+  <span
+    style={{
+      ...guideSphereStyles.base,
+      ...guideSphereStyles[variant]
+    }}
+  >
+    {children}
+  </span>
+);
+
+const GuideCard = ({ icon, title, text }) => (
+  <div
+    className="d-flex align-items-start p-3 rounded-3 h-100"
+    style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+  >
+    <span
+      className="me-3 d-inline-flex align-items-center justify-content-center rounded-3"
+      style={{
+        width: 44,
+        height: 44,
+        background: "#f8fafc",
+        border: "1px solid #e2e8f0",
+        color: "#475569",
+        flexShrink: 0
+      }}
+    >
+      {icon}
+    </span>
+    <div>
+      <div className="fw-semibold mb-1">{title}</div>
+      <small className="text-muted">{text}</small>
+    </div>
+  </div>
+);
 const Navigation = ({ toLinks, flaworControl, archControl }) => {
   const location = useLocation();
 
@@ -536,79 +615,269 @@ const Navigation = ({ toLinks, flaworControl, archControl }) => {
           </Modal.Title>
         </Modal.Header>
 
-        <Modal.Body className="px-4 py-4">
-          <div className="row g-3">
-            <div className="col-md-6">
-              <div className="d-flex align-items-center p-3 border rounded-3">
-                <BsCheckCircle className="text-success me-3" size={24} />
-                <div>
-                  <div className="fw-semibold">All Tests Successful</div>
-                  <small className="text-muted">All checks passed</small>
+          <Modal.Body className="px-4 py-4">
+            <div className="row g-3 mb-4">
+              {/* Full Build */}
+              <div className="col-md-6">
+                <div
+                  className="d-flex align-items-start p-3 rounded-3 h-100"
+                  style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+                >
+                  <span
+                    className="me-3 d-inline-flex align-items-center justify-content-center rounded-3"
+                    style={{
+                      width: 44,
+                      height: 44,
+                      background: "#5EB85E",
+                      border: "1px solid #3E9A3E",
+                      color: "#ffffff",
+                      flexShrink: 0
+                    }}
+                  >
+                    <FaWrench size={16} />
+                  </span>
+                  <div>
+                    <div className="fw-semibold mb-1">Full Build</div>
+                    <small className="text-muted">
+                      Complete build of the release.
+                    </small>
+                  </div>
+                </div>
+              </div>
+
+              {/* Patch Release */}
+              <div className="col-md-6">
+                <div
+                  className="d-flex align-items-start p-3 rounded-3 h-100"
+                  style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+                >
+                  <span
+                    className="me-3 d-inline-flex align-items-center justify-content-center rounded-3"
+                    style={{
+                      width: 44,
+                      height: 44,
+                      background: "#ffffff",
+                      border: "1px solid #e2e8f0",
+                      color: "#facc15",
+                      flexShrink: 0
+                    }}
+                  >
+                    <FaTools size={18} />
+                  </span>
+                  <div>
+                    <div className="fw-semibold mb-1">Patch Release</div>
+                    <small className="text-muted">
+                      Patch release.
+                    </small>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="col-md-6">
-              <div className="d-flex align-items-center p-3 border rounded-3">
-                <span className="badge bg-warning text-dark me-3 px-3 py-2 rounded-pill">14</span>
-                <div>
-                  <div className="fw-semibold">Warnings</div>
-                  <small className="text-muted">Click for details</small>
+            <div className="mb-4">
+              <div className="fw-semibold mb-3" style={{ color: THEME.text.primary, fontSize: "1rem" }}>
+                Status Indicators
+              </div>
+
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <div
+                    className="d-flex align-items-start p-3 rounded-3 h-100"
+                    style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+                  >
+                    <span className="me-3" style={{ flexShrink: 0 }}>
+                      <GuideSphere variant="success">
+                        <FaCheck size={12} />
+                      </GuideSphere>
+                    </span>
+                    <div>
+                      <div className="fw-semibold mb-1">Passed</div>
+                      <small className="text-muted">
+                        Passed result shown with a green sphere and tick.
+                      </small>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-md-6">
+                  <div
+                    className="d-flex align-items-start p-3 rounded-3 h-100"
+                    style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+                  >
+                    <span className="me-3" style={{ flexShrink: 0 }}>
+                      <GuideSphere variant="danger">
+                        <FaTimes size={12} />
+                      </GuideSphere>
+                    </span>
+                    <div>
+                      <div className="fw-semibold mb-1">Error</div>
+                      <small className="text-muted">
+                        Passed result shown with a red sphere and cross.
+                      </small>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-md-6">
+                  <div
+                    className="d-flex align-items-start p-3 rounded-3 h-100"
+                    style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+                  >
+                    <span className="me-3" style={{ flexShrink: 0 }}>
+                      <GuideSphere variant="warning">14</GuideSphere>
+                    </span>
+                    <div>
+                      <div className="fw-semibold mb-1">Warning Count</div>
+                      <small className="text-muted">
+                        Yellow sphere with a number indicates warnings or known failed items.
+                      </small>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-md-6">
+                  <div
+                    className="d-flex align-items-start p-3 rounded-3 h-100"
+                    style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+                  >
+                    <span className="me-3" style={{ flexShrink: 0 }}>
+                      <GuideSphere variant="success">4779</GuideSphere>
+                    </span>
+                    <div>
+                      <div className="fw-semibold mb-1">Passed Count</div>
+                      <small className="text-muted">
+                        Green sphere with a number indicates successful counted results.
+                      </small>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-md-6">
+                  <div
+                    className="d-flex align-items-start p-3 rounded-3 h-100"
+                    style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+                  >
+                    <span className="me-3" style={{ flexShrink: 0 }}>
+                      <GuideSphere variant="danger">512</GuideSphere>
+                    </span>
+                    <div>
+                      <div className="fw-semibold mb-1">Error Count</div>
+                      <small className="text-muted">
+                        Red sphere with a number indicates failing counted results.
+                      </small>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-md-6">
+                  <GuideCard
+                    icon={<BsArrowRepeat size={18} />}
+                    title="In Progress"
+                    text="The check is still running or results are not ready yet."
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <GuideCard
+                    icon={<BsList size={18} />}
+                    title="Available / Ready"
+                    text="The item is available to open, inspect, or navigate."
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <GuideCard
+                    icon={<BsFilter size={18} />}
+                    title="Filters"
+                    text="Use the Filters button to show or hide architecture and flavor filters."
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="col-md-6">
-              <div className="d-flex align-items-center p-3 border rounded-3">
-                <span className="badge bg-danger me-3 px-3 py-2 rounded-pill">14</span>
-                <div>
-                  <div className="fw-semibold">Errors</div>
-                  <small className="text-muted">Requires attention</small>
-                </div>
+            <div>
+              <div className="fw-semibold mb-3" style={{ color: THEME.text.primary, fontSize: "1rem" }}>
+                Row Icons
               </div>
-            </div>
 
-            <div className="col-md-6">
-              <div className="d-flex align-items-center p-3 border rounded-3">
-                <BsArrowRepeat className="text-secondary me-3" size={24} />
-                <div>
-                  <div className="fw-semibold">HLT Validation</div>
-                  <small className="text-muted">Results pending</small>
-                </div>
-              </div>
-            </div>
+              <div
+                className="p-3 rounded-3"
+                style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+              >
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="d-flex align-items-start">
+                      <span className="me-3 mt-1" style={{ color: "#64748b" }}>
+                        <FaCubes size={15} />
+                      </span>
+                      <div>
+                        <div className="fw-semibold mb-1">Builds</div>
+                        <small className="text-muted">
+                          Compilation and build status of the release.
+                        </small>
+                      </div>
+                    </div>
+                  </div>
 
-            <div className="col-md-6">
-              <div className="d-flex align-items-center p-3 border rounded-3">
-                <BsList className="text-secondary me-3" size={24} />
-                <div>
-                  <div className="fw-semibold">HLT Validation</div>
-                  <small className="text-muted">Results ready</small>
-                </div>
-              </div>
-            </div>
+                  <div className="col-md-6">
+                    <div className="d-flex align-items-start">
+                      <span className="me-3 mt-1" style={{ color: "#64748b" }}>
+                        <FaVial size={15} />
+                      </span>
+                      <div>
+                        <div className="fw-semibold mb-1">Unit</div>
+                        <small className="text-muted">
+                          Automated unit test results.
+                        </small>
+                      </div>
+                    </div>
+                  </div>
 
-            <div className="col-md-6">
-              <div className="d-flex align-items-center p-3 border rounded-3">
-                <BsCheckCircle className="text-success me-3" size={24} />
-                <div>
-                  <div className="fw-semibold">FWLite</div>
-                  <small className="text-muted">Test passed</small>
-                </div>
-              </div>
-            </div>
+                  <div className="col-md-6">
+                    <div className="d-flex align-items-start">
+                      <span className="me-3 mt-1" style={{ color: "#64748b" }}>
+                        <FaLayerGroup size={15} />
+                      </span>
+                      <div>
+                        <div className="fw-semibold mb-1">RelVal</div>
+                        <small className="text-muted">
+                          Validation workflows and comparison results.
+                        </small>
+                      </div>
+                    </div>
+                  </div>
 
-            <div className="col-md-6">
-              <div className="d-flex align-items-center p-3 border rounded-3">
-                <BsXCircle className="text-danger me-3" size={24} />
-                <div>
-                  <div className="fw-semibold">FWLite</div>
-                  <small className="text-muted">Test failed</small>
+                  <div className="col-md-6">
+                    <div className="d-flex align-items-start">
+                      <span className="me-3 mt-1" style={{ color: "#64748b" }}>
+                        <FaPlus size={15} />
+                      </span>
+                      <div>
+                        <div className="fw-semibold mb-1">AddOn</div>
+                        <small className="text-muted">
+                          Additional checks and special tests.
+                        </small>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-md-6">
+                    <div className="d-flex align-items-start">
+                      <span className="me-3 mt-1" style={{ color: "#64748b" }}>
+                        <FaClipboardList size={15} />
+                      </span>
+                      <div>
+                        <div className="fw-semibold mb-1">Q/A</div>
+                        <small className="text-muted">
+                          Quality checks and detailed report links.
+                        </small>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </Modal.Body>
+          </Modal.Body>
 
         <Modal.Footer className="border-0 bg-light">
           <Button variant="primary" onClick={handleClose} className="px-4">

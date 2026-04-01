@@ -181,11 +181,21 @@ class StatusLabels extends Component {
 
     let outputConfig;
 
-    if ([STATUS_ENUM.found, STATUS_ENUM.passed].includes(status)) {
-      outputConfig = config.ifFound
-        ? config.ifFound(ib, result)
-        : StatusLabels.defaultFound(config, ib, result);
-    } else if ([STATUS_ENUM.inprogress, STATUS_ENUM.inProgress].includes(status)) {
+   if (status === STATUS_ENUM.passed) {
+  outputConfig = config.ifPassed
+    ? config.ifPassed(ib, result)
+    : {
+        name: config.name,
+        icon: ICON_MAP.success,
+        url: config.getUrl ? config.getUrl(ib, result) : undefined,
+        variant: "success",
+        tooltip: "Test passed"
+      };
+} else if (status === STATUS_ENUM.found) {
+  outputConfig = config.ifFound
+    ? config.ifFound(ib, result)
+    : StatusLabels.defaultFound(config, ib, result);
+} else if ([STATUS_ENUM.inprogress, STATUS_ENUM.inProgress].includes(status)) {
       outputConfig = config.ifInProgress
         ? config.ifInProgress(ib, result)
         : StatusLabels.defaultInProgress(config);

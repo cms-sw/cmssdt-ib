@@ -20,6 +20,11 @@
     "underscore": "^1.13.7",
     "uuid": "^9.0.1"
   },
+  "overrides": {
+    "underscore": "$underscore",
+    "nth-check": "^2.0.1",
+    "@tootallnate/once": "^3.0.1"
+  },
   "browserslist": {
     "production": [
       ">0.2%",
