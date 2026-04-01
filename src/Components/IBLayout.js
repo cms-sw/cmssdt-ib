@@ -41,7 +41,11 @@ class IBLayout extends Component {
             all_release_queues: props.structure?.all_release_queues || [],
             toLinks: props.toLinks || [],
             navigationHeight: 50,
-            releaseQue: props.params?.prefix || ""
+            releaseQue: props.params?.prefix || "",
+            loading: false,
+            error: null,
+            isUnauthorized: false,
+            isNetworkError: false
         };
     }
 
@@ -93,18 +97,28 @@ class IBLayout extends Component {
 
     getData(ibList) {
         if (!ibList || ibList.length === 0) {
-            if (this.state.dataList.length > 0) {
-                this.setState({ dataList: [] });
-            }
+            this.setState((prevState) => {
+                const updates = {
+                    dataList: [],
+                    loading: false,
+                    error: null,
+                    isUnauthorized: false,
+                    isNetworkError: false
+                };
+
+                const isSame =
+                    prevState.dataList.length === 0 &&
+                    prevState.loading === false &&
+                    prevState.error === null &&
+                    prevState.isUnauthorized === false &&
+                    prevState.isNetworkError === false;
+
+                return isSame ? null : updates;
+            });
             return;
         }
 
         const listSignature = JSON.stringify(ibList);
-        if (this.lastRequestedIbListSignature === listSignature) {
-            // Even if the list is the same, we still want to rebuild from cache
-            // because some entries may have expired and been refreshed.
-            // So do not return early here.
-        }
         this.lastRequestedIbListSignature = listSignature;
 
         const cachedData = [];
@@ -118,20 +132,53 @@ class IBLayout extends Component {
             }
         });
 
+        // If all data is already available from cache, show it immediately
         if (missingNames.length === 0) {
             this.setState((prevState) => {
                 const sameLength = prevState.dataList.length === cachedData.length;
                 const sameRefOrder = sameLength && prevState.dataList.every((item, index) => item === cachedData[index]);
 
-                if (sameRefOrder) return null;
-                return { dataList: cachedData };
+                const dataChanged = !sameRefOrder;
+                const stateNeedsReset =
+                    prevState.loading !== false ||
+                    prevState.error !== null ||
+                    prevState.isUnauthorized !== false ||
+                    prevState.isNetworkError !== false;
+
+                if (!dataChanged && !stateNeedsReset) return null;
+
+                return {
+                    dataList: cachedData,
+                    loading: false,
+                    error: null,
+                    isUnauthorized: false,
+                    isNetworkError: false
+                };
             });
             return;
         }
 
+        // Show cached partial data immediately while remaining files are loading
+        this.setState((prevState) => {
+            const sameLength = prevState.dataList.length === cachedData.length;
+            const sameRefOrder =
+                sameLength &&
+                prevState.dataList.every((item, index) => item === cachedData[index]);
+
+            return {
+                dataList: sameRefOrder ? prevState.dataList : cachedData,
+                loading: true,
+                error: null,
+                isUnauthorized: false,
+                isNetworkError: false
+            };
+        });
+
         getMultipleFiles({
             fileUrlList: missingNames.map((name) => urls.dataDir + name + '.json'),
             onSuccessCallback: (responsesList) => {
+                if (!this._isMounted) return;
+
                 responsesList.forEach((response, index) => {
                     const name = missingNames[index];
                     if (response && response.data) {
@@ -146,16 +193,42 @@ class IBLayout extends Component {
                     .map((name) => ibDataCache[name]?.data)
                     .filter((item) => item);
 
-                if (!this._isMounted) return;
-
                 this.setState((prevState) => {
                     const sameLength = prevState.dataList.length === mergedData.length;
                     const sameRefOrder =
                         sameLength &&
                         prevState.dataList.every((item, index) => item === mergedData[index]);
 
-                    if (sameRefOrder) return null;
-                    return { dataList: mergedData };
+                    const dataChanged = !sameRefOrder;
+                    const stateNeedsReset =
+                        prevState.loading !== false ||
+                        prevState.error !== null ||
+                        prevState.isUnauthorized !== false ||
+                        prevState.isNetworkError !== false;
+
+                    if (!dataChanged && !stateNeedsReset) return null;
+
+                    return {
+                        dataList: mergedData,
+                        loading: false,
+                        error: null,
+                        isUnauthorized: false,
+                        isNetworkError: false
+                    };
+                });
+            },
+            onErrorCallback: (error) => {
+                if (!this._isMounted) return;
+
+                const status = error?.response?.status;
+                const isUnauthorized = status === 401;
+                const isNetworkError = !error?.response;
+
+                this.setState({
+                    loading: false,
+                    error,
+                    isUnauthorized,
+                    isNetworkError
                 });
             }
         });
@@ -191,7 +264,8 @@ class IBLayout extends Component {
     }
 
     render() {
-        const { releaseQue, toLinks, nameList, all_release_queues } = this.state;
+        const { releaseQue, toLinks, nameList, all_release_queues, loading, error, isUnauthorized, isNetworkError } = this.state;
+
         const filteredData = this.filterListToShow();
 
         return (
@@ -207,9 +281,15 @@ class IBLayout extends Component {
                     }
                     archControl={<TogglesShowArchs releaseQue={releaseQue} />}
                 />
+
                 <IBGroupsWithArch
                     data={filteredData}
                     releaseQue={releaseQue}
+                    loading={loading}
+                    error={error}
+                    isUnauthorized={isUnauthorized}
+                    isNetworkError={isNetworkError}
+                    loadingText={`Loading ${releaseQue || 'release'} builds...`}
                 />
             </div>
         );
