@@ -11,7 +11,10 @@ import {
     FaThumbtack,
     FaArrowUp,
     FaArrowDown,
-    FaTimes
+    FaTimes,
+    FaExclamationTriangle,
+    FaWifi,
+    FaLock
 } from 'react-icons/fa';
 
 // Helper function to check if an architecture matches selected filters
@@ -51,7 +54,25 @@ class IBGroups extends Component {
     static propTypes = {
         data: PropTypes.array,
         releaseQue: PropTypes.string.isRequired,
-        activeArchs: PropTypes.object
+        activeArchs: PropTypes.object,
+        loading: PropTypes.bool,
+        error: PropTypes.oneOfType([
+            PropTypes.string,
+            PropTypes.object
+        ]),
+        isUnauthorized: PropTypes.bool,
+        isNetworkError: PropTypes.bool,
+        loadingText: PropTypes.string
+    };
+
+    static defaultProps = {
+        data: [],
+        activeArchs: { os: [], cpu: [], compiler: [] },
+        loading: false,
+        error: null,
+        isUnauthorized: false,
+        isNetworkError: false,
+        loadingText: 'Loading builds...'
     };
 
     constructor(props) {
@@ -207,6 +228,130 @@ class IBGroups extends Component {
 
         return first.release_name || first.id || 'Unknown Release';
     };
+
+    renderStatusCard = ({
+        icon,
+        title,
+        message,
+        tone = 'neutral'
+    }) => {
+        const toneStyles = {
+            neutral: {
+                background: '#f8fafc',
+                border: '#e2e8f0',
+                iconBg: '#e2e8f0',
+                iconColor: '#475569',
+                titleColor: '#334155',
+                messageColor: '#64748b'
+            },
+            warning: {
+                background: '#fff7ed',
+                border: '#fdba74',
+                iconBg: '#ffedd5',
+                iconColor: '#ea580c',
+                titleColor: '#9a3412',
+                messageColor: '#c2410c'
+            },
+            danger: {
+                background: '#fef2f2',
+                border: '#fca5a5',
+                iconBg: '#fee2e2',
+                iconColor: '#dc2626',
+                titleColor: '#991b1b',
+                messageColor: '#b91c1c'
+            },
+            info: {
+                background: '#eff6ff',
+                border: '#93c5fd',
+                iconBg: '#dbeafe',
+                iconColor: '#2563eb',
+                titleColor: '#1d4ed8',
+                messageColor: '#1e40af'
+            }
+        };
+
+        const colors = toneStyles[tone] || toneStyles.neutral;
+
+        return (
+            <div className="d-flex justify-content-center align-items-center py-5">
+                <div
+                    style={{
+                        width: '100%',
+                        maxWidth: '560px',
+                        background: colors.background,
+                        border: `1px solid ${colors.border}`,
+                        borderRadius: '16px',
+                        padding: '28px 24px',
+                        boxShadow: '0 10px 25px rgba(15, 23, 42, 0.06)',
+                        textAlign: 'center'
+                    }}
+                >
+                    <div
+                        style={{
+                            width: '56px',
+                            height: '56px',
+                            borderRadius: '50%',
+                            background: colors.iconBg,
+                            color: colors.iconColor,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 16px auto',
+                            fontSize: '22px'
+                        }}
+                    >
+                        {icon}
+                    </div>
+
+                    <h5
+                        className="mb-2"
+                        style={{
+                            color: colors.titleColor,
+                            fontWeight: 700
+                        }}
+                    >
+                        {title}
+                    </h5>
+
+                    <p
+                        className="mb-0"
+                        style={{
+                            color: colors.messageColor,
+                            fontSize: '0.97rem',
+                            lineHeight: 1.5
+                        }}
+                    >
+                        {message}
+                    </p>
+                </div>
+            </div>
+        );
+    };
+
+    renderPageLoader() {
+        const { loadingText } = this.props;
+
+        return (
+            <div className="d-flex justify-content-center align-items-center py-5">
+                <div
+                    style={{
+                        minHeight: '220px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'column',
+                        gap: '14px'
+                    }}
+                >
+                    <Spinner animation="border" role="status" style={{ width: '2.6rem', height: '2.6rem' }} />
+                    <div style={{ color: '#475569', fontWeight: 600 }}>{loadingText}</div>
+                    <div style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+                        Please wait while release data is being loaded
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     renderFloatingToggle() {
         const { expandAllCommits, isToggleLoading } = this.state;
@@ -373,6 +518,8 @@ class IBGroups extends Component {
 
     render() {
         const { releaseQue, activeArchs, expandAllCommits } = this.state;
+        const { loading, error, isUnauthorized, isNetworkError } = this.props;
+
         const filteredData = this.getFilteredData();
 
         const hasFilters =
@@ -380,19 +527,51 @@ class IBGroups extends Component {
             activeArchs.cpu?.length > 0 ||
             activeArchs.compiler?.length > 0;
 
+        if (loading) {
+            return this.renderPageLoader();
+        }
+
+        if (isUnauthorized) {
+            return this.renderStatusCard({
+                icon: <FaLock />,
+                title: 'Session expired',
+                message: 'Your session has expired. Please refresh the page and sign in again.',
+                tone: 'warning'
+            });
+        }
+
+        if (isNetworkError) {
+            return this.renderStatusCard({
+                icon: <FaWifi />,
+                title: 'Network issue',
+                message: 'Unable to load release data. Please check your network connection and try again.',
+                tone: 'warning'
+            });
+        }
+
+        if (error) {
+            const message =
+                typeof error === 'string'
+                    ? error
+                    : error?.message || 'Something went wrong while loading the release data.';
+
+            return this.renderStatusCard({
+                icon: <FaExclamationTriangle />,
+                title: 'Failed to load builds',
+                message,
+                tone: 'danger'
+            });
+        }
+
         if (!filteredData || filteredData.length === 0) {
-            return (
-                <div className="text-center py-5">
-                    <div className="text-secondary">
-                        <h5 className="mb-2">No builds found</h5>
-                        <p className="mb-0 text-muted" style={{ fontSize: '0.95rem' }}>
-                            {hasFilters
-                                ? 'No builds match the selected architectures'
-                                : 'No data available'}
-                        </p>
-                    </div>
-                </div>
-            );
+            return this.renderStatusCard({
+                icon: <FaCodeBranch />,
+                title: 'No builds found',
+                message: hasFilters
+                    ? 'No builds match the selected architectures. Try changing or clearing the filters.'
+                    : 'No data available for this release.',
+                tone: 'info'
+            });
         }
 
         return (
