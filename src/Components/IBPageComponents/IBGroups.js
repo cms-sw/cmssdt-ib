@@ -14,7 +14,9 @@ import {
     FaTimes,
     FaExclamationTriangle,
     FaWifi,
-    FaLock
+    FaLock,
+    FaEye,
+    FaEyeSlash
 } from 'react-icons/fa';
 
 // Helper function to check if an architecture matches selected filters
@@ -89,10 +91,48 @@ class IBGroups extends Component {
             activeArchsSignature: getArchStateSignature(props.activeArchs || { os: [], cpu: [], compiler: [] }),
             expandAllCommits: false,
             showNavigator: false,
-            isToggleLoading: false
+            isToggleLoading: false,
+            collapsedGroups: {}
         };
     }
+    toggleGroupCollapse = (groupKey) => {
+        this.setState((prevState) => ({
+            collapsedGroups: {
+                ...prevState.collapsedGroups,
+                [groupKey]: !prevState.collapsedGroups[groupKey]
+            }
+        }));
+    };
+  toggleGroupCollapse = (groupKey) => {
+    this.setState((prevState) => ({
+        collapsedGroups: {
+            ...prevState.collapsedGroups,
+            [groupKey]: !prevState.collapsedGroups[groupKey]
+        }
+    }));
+};
 
+    toggleAllReleasePanels = () => {
+        const filteredData = this.getFilteredData();
+
+        if (!filteredData || filteredData.length === 0) return;
+
+        const allCollapsed = filteredData.every((group, index) => {
+            const groupKey = this.getGroupKey(group, index);
+            return !!this.state.collapsedGroups[groupKey];
+        });
+
+        const nextCollapsedGroups = {};
+
+        filteredData.forEach((group, index) => {
+            const groupKey = this.getGroupKey(group, index);
+            nextCollapsedGroups[groupKey] = !allCollapsed;
+        });
+
+        this.setState({
+            collapsedGroups: nextCollapsedGroups
+        });
+    };
     static getDerivedStateFromProps(nextProps, prevState) {
         const nextArchs = nextProps.activeArchs || { os: [], cpu: [], compiler: [] };
         const nextArchsSignature = getArchStateSignature(nextArchs);
@@ -217,7 +257,6 @@ class IBGroups extends Component {
 
         return `${releaseName}-${flavor}-${ibDate}-${nextIbFlag}-${isIbFlag}`;
     };
-
     getGroupLabel = (group) => {
         if (!Array.isArray(group) || group.length === 0) return 'Unknown Release';
 
@@ -228,7 +267,6 @@ class IBGroups extends Component {
 
         return first.release_name || first.id || 'Unknown Release';
     };
-
     renderStatusCard = ({
         icon,
         title,
@@ -428,44 +466,60 @@ class IBGroups extends Component {
     }
 
     renderCornerButtons() {
-        return (
-            <div
-                style={{
-                    position: 'fixed',
-                    right: '16px',
-                    bottom: '20px',
-                    zIndex: 1050,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px'
-                }}
-            >
-                <button
-                    onClick={this.scrollToTop}
-                    title="Go to top"
-                    style={miniToolButtonStyle}
-                >
-                    <FaArrowUp size={12} />
-                </button>
+            const filteredData = this.getFilteredData();
 
-                <button
-                    onClick={this.scrollToBottom}
-                    title="Go to bottom"
-                    style={miniToolButtonStyle}
-                >
-                    <FaArrowDown size={12} />
-                </button>
+            const allCollapsed =
+                filteredData.length > 0 &&
+                filteredData.every((group, index) => {
+                    const groupKey = this.getGroupKey(group, index);
+                    return !!this.state.collapsedGroups[groupKey];
+                });
 
-                <button
-                    onClick={this.toggleNavigator}
-                    title="Show releases"
-                    style={pinControlButtonStyle}
+            return (
+                <div
+                    style={{
+                        position: 'fixed',
+                        right: '16px',
+                        bottom: '20px',
+                        zIndex: 1050,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
+                    }}
                 >
-                    <FaThumbtack size={12} />
-                </button>
-            </div>
-        );
-    }
+                    <button
+                        onClick={this.toggleAllReleasePanels}
+                        title={allCollapsed ? "Show all releases" : "Hide all releases"}
+                        style={miniToolButtonStyle}
+                    >
+                        {allCollapsed ? <FaEye size={12} /> : <FaEyeSlash size={12} />}
+                    </button>
+                    <button
+                        onClick={this.scrollToTop}
+                        title="Go to top"
+                        style={miniToolButtonStyle}
+                    >
+                        <FaArrowUp size={12} />
+                    </button>
+
+                    <button
+                        onClick={this.scrollToBottom}
+                        title="Go to bottom"
+                        style={miniToolButtonStyle}
+                    >
+                        <FaArrowDown size={12} />
+                    </button>
+
+                    <button
+                        onClick={this.toggleNavigator}
+                        title="Show releases"
+                        style={pinControlButtonStyle}
+                    >
+                        <FaThumbtack size={12} />
+                    </button>
+                </div>
+            );
+        }
 
     renderNavigator(groups) {
         const { showNavigator } = this.state;
@@ -517,7 +571,7 @@ class IBGroups extends Component {
     }
 
     render() {
-        const { releaseQue, activeArchs, expandAllCommits } = this.state;
+        const { releaseQue, activeArchs, expandAllCommits, collapsedGroups } = this.state;
         const { loading, error, isUnauthorized, isNetworkError } = this.props;
 
         const filteredData = this.getFilteredData();
@@ -580,8 +634,9 @@ class IBGroups extends Component {
                 {this.renderCornerButtons()}
                 {this.renderNavigator(filteredData)}
 
-                {filteredData.map((IBGroup, index) => {
+               {filteredData.map((IBGroup, index) => {
                     const groupKey = this.getGroupKey(IBGroup, index);
+                    const isCollapsed = !!collapsedGroups[groupKey];
 
                     return (
                         <div
@@ -598,6 +653,8 @@ class IBGroups extends Component {
                                 IBGroup={IBGroup}
                                 releaseQue={releaseQue}
                                 expandAllCommits={expandAllCommits}
+                                isCollapsed={isCollapsed}
+                                onToggleCollapse={() => this.toggleGroupCollapse(groupKey)}
                             />
                         </div>
                     );
