@@ -330,8 +330,10 @@ class StatusLabels extends Component {
     const menuData = [];
 
     // Add IB Tag
-    const ibTag = StatusLabels.renderIBTag(IBGroup, ibGroupType);
-    if (ibTag) menuData.push(ibTag);
+    if (ibGroupType !== "IB") {
+      const ibTag = StatusLabels.renderIBTag(IBGroup, ibGroupType);
+      if (ibTag) menuData.push(ibTag);
+    }
 
     // Add GPU and other data if available
     if (ib) {
