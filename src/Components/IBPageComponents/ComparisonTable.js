@@ -843,16 +843,16 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                   </div>
                 </th>
 
-                {archsByIb.map((item) => item.archs?.length > 0 && (
-                  <th
-                    key={uuidv4()}
-                    colSpan={item.archs.length}
-                    style={{
-                      textAlign: 'center',
-                      padding: '6px 2px',
-                      backgroundColor: THEME.light
-                    }}
-                  >
+                {archsByIb.map((item) => {
+                  if (!item.archs?.length) return null;
+
+                  const flavorLabel = formatFlavorLabel(item.flavor);
+                  const flavorTag = item.current_tag;
+                  const flavorLink = flavorTag
+                    ? `https://github.com/cms-sw/cmssw/tree/${flavorTag}`
+                    : null;
+
+                  const flavorCard = (
                     <div
                       className="flavor-card"
                       style={{
@@ -866,13 +866,40 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                         minWidth: '110px',
                         fontSize: '0.82rem',
                         fontWeight: 800,
-                        margin: '0 auto'
+                        margin: '0 auto',
+                        cursor: flavorLink ? 'pointer' : 'default'
+                      }}
+                      title={flavorTag ? `Open ${flavorTag}` : flavorLabel}
+                    >
+                      {flavorLabel}
+                    </div>
+                  );
+
+                  return (
+                    <th
+                      key={uuidv4()}
+                      colSpan={item.archs.length}
+                      style={{
+                        textAlign: 'center',
+                        padding: '6px 2px',
+                        backgroundColor: THEME.light
                       }}
                     >
-                      {formatFlavorLabel(item.flavor)}
-                    </div>
-                  </th>
-                ))}
+                      {flavorLink ? (
+                        <a
+                          href={flavorLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ textDecoration: 'none', display: 'inline-block' }}
+                        >
+                          {flavorCard}
+                        </a>
+                      ) : (
+                        flavorCard
+                      )}
+                    </th>
+                  );
+                })}
               </tr>
 
               <tr>

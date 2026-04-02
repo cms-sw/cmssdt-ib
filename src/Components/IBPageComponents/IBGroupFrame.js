@@ -4,6 +4,7 @@ import StatusLabels from "./StatusLabels";
 import ComparisonTable from "./ComparisonTable";
 import { Card } from "react-bootstrap";
 import { checkIfCommitsAreEmpty, checkIfTableIsEmpty } from "../../Utils/processing";
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 class IBGroupFrame extends PureComponent {
 
@@ -17,7 +18,7 @@ class IBGroupFrame extends PureComponent {
     }
 
     render() {
-        const { IBGroup, releaseQue, expandAllCommits } = this.props;
+        const { IBGroup, releaseQue, expandAllCommits, isCollapsed, onToggleCollapse } = this.props;
 
         const firstIbFromList = IBGroup[0];
         if (!firstIbFromList) {
@@ -97,55 +98,99 @@ class IBGroupFrame extends PureComponent {
               }
             : {};
 
-        const headerStyle = isNextIB
-            ? {
-                  background: 'linear-gradient(90deg, #dbeafe 0%, #eff6ff 100%)',
-                  borderBottom: '1px solid #bfdbfe',
-                  color: '#1d4ed8',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: '10px',
-                  flexWrap: 'wrap'
-              }
-            : {
-                  display: 'flex',
-                  alignItems: 'center'
-              };
+        const headerStyle = {
+            background: 'linear-gradient(90deg, #dbeafe 0%, #eff6ff 100%)',
+            borderBottom: '1px solid #bfdbfe',
+            color: '#1d4ed8',
+            display: 'flex',
+            justifyContent: isNextIB ? 'center' : 'space-between',
+            alignItems: 'center',
+            gap: '10px',
+            flexWrap: 'wrap',
+            cursor: 'pointer',
+            userSelect: 'none',
+            padding: '0.55rem 0.9rem'
+        };
 
         return (
             <Card className="mb-3" style={cardStyle}>
-                <Card.Header style={headerStyle}>
-                    <strong>{panelHeader}</strong>
+                <Card.Header
+                    style={headerStyle}
+                    onClick={onToggleCollapse}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onToggleCollapse();
+                        }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    title={isCollapsed ? `Show ${panelHeader}` : `Hide ${panelHeader}`}
+                >
+                    {isNextIB ? (
+    <div
+        style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+            flexWrap: 'wrap',
+            width: '100%'
+        }}
+    >
+        <strong>{panelHeader}</strong>
 
-                    {isNextIB && (
-                        <>
-                            <span
-                                style={{
-                                    fontSize: '0.75rem',
-                                    fontWeight: 700,
-                                    padding: '3px 10px',
-                                    borderRadius: '999px',
-                                    background: '#2563eb',
-                                    color: '#ffffff'
-                                }}
-                            >
-                                Upcoming
-                            </span>
-                            {ibTagDropdown}
-                        </>
-                    )}
+        <span
+            style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '999px',
+                background: '#2563eb',
+                color: '#ffffff'
+            }}
+        >
+            Upcoming
+        </span>
+
+        <div
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+        >
+            {ibTagDropdown}
+        </div>
+    </div>
+) : (
+    <>
+         <strong>{panelHeader}</strong>
+
+                    <span
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#1d4ed8',
+                            fontSize: '0.95rem',
+                            marginLeft: 'auto'
+                        }}
+                    >
+                        {isCollapsed ? <FaEyeSlash /> : <FaEye />}
+                    </span>
+                </>
+            )}
                 </Card.Header>
 
-                <Card.Body style={{ padding: "0.25rem 0.5rem 0.5rem 0.5rem" }}>
-                    {statusLabels}
-                    {comparisonTable}
-                    <Commits
-                        commitPanelProps={commitPanelProps}
-                        data={IBGroup}
-                        expandAllCommits={expandAllCommits}
-                    />
-                </Card.Body>
+                {!isCollapsed && (
+                    <Card.Body style={{ padding: "0.25rem 0.5rem 0.5rem 0.5rem" }}>
+                        {statusLabels}
+                        {comparisonTable}
+                        <Commits
+                            commitPanelProps={commitPanelProps}
+                            data={IBGroup}
+                            expandAllCommits={expandAllCommits}
+                        />
+                    </Card.Body>
+                )}
             </Card>
         );
     }
