@@ -330,7 +330,7 @@ class StatusLabels extends Component {
             backgroundColor: colors.bg,
             borderColor: colors.border,
             color: colors.text,
-            fontWeight: "400",
+            fontWeight: "500",
             padding: "4px 10px",
             fontSize: "0.85rem",
             boxShadow: "none",
@@ -431,7 +431,7 @@ class StatusLabels extends Component {
               backgroundColor: colors.bg,
               borderColor: colors.border,
               color: colors.text,
-              fontWeight: "400",
+              fontWeight: "500",
               padding: "4px 10px",
               fontSize: "0.85rem",
               boxShadow: "none"
