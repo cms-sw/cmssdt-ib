@@ -280,6 +280,22 @@ export const config = {
             getUrl: function (ib) {
                 return "https://cmssdt.cern.ch/SDT/jenkins-artifacts/ib-run-crab/" + getCurrentIbTag(ib);
             },
+            ifPassed: function(ib, result) {
+                return {
+                    name: this.name,
+                    glyphicon: "glyphicon-ok",
+                    url: this.getUrl(ib),
+                    labelColor: "green"
+                };
+            },
+            ifFound: function(ib, result) {
+                return {
+                    name: this.name,
+                    glyphicon: "glyphicon-ok",
+                    url: this.getUrl(ib),
+                    labelColor: "green"
+                };
+            },
             ifError: function(ib, result) {
                 return {
                     name: this.name,
@@ -500,14 +516,23 @@ export const config = {
                     case "danger" :
                         return STATUS_ENUM.error;
                     default:
-                        return labelelType.colorType // should be success | warning
+                        return labelelType.colorType
                 }
+            },
+            ifPassed: function(ib, result) {
+                return {
+                    name: this.name,
+                    glyphicon: "glyphicon-ok",
+                    url: this.getUrl(ib),
+                    labelColor: "green"
+                };
             },
             ifFound: function(ib, result) {
                 return {
                     name: this.name,
                     glyphicon: "glyphicon-ok",
                     url:  this.getUrl(ib),
+                    labelColor: "green"
                 };
             },
             ifError: function(ib, result) {
@@ -551,11 +576,20 @@ export const config = {
                         return labelelType.colorType // should be success | warning
                 }
             },
+            ifPassed: function(ib, result) {
+                return {
+                    name: this.name,
+                    glyphicon: "glyphicon-ok",
+                    url: this.getUrl(ib),
+                    labelColor: "green"
+                };
+            },
             ifFound: function(ib, result) {
                 return {
                     name: this.name,
                     glyphicon: "glyphicon-ok",
                     url:  this.getUrl(ib),
+                    labelColor: "green"
                 };
             },
             ifError: function(ib, result) {
@@ -598,11 +632,20 @@ export const config = {
                         return labelelType.colorType // should be success | warning
                 }
             },
+            ifPassed: function(ib, result) {
+                return {
+                    name: this.name,
+                    glyphicon: "glyphicon-ok",
+                    url: this.getUrl(ib),
+                    labelColor: "green"
+                };
+            },
             ifFound: function(ib, result) {
                 return {
                     name: this.name,
                     glyphicon: "glyphicon-ok",
                     url:  this.getUrl(ib),
+                    labelColor: "green"
                 };
             },
             ifError: function(ib, result) {

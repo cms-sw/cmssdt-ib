@@ -10,10 +10,12 @@ import {
   FaExclamationCircle,
   FaSearch
 } from "react-icons/fa";
+
 import { SiNvidia, SiAmd } from "react-icons/si";
+import { BsGpuCard } from "react-icons/bs";
 
 const { urls } = config;
-const MAX_VISIBLE = 10;
+const MAX_VISIBLE = Number.MAX_SAFE_INTEGER;
 
 const COLOR_SCHEME = {
   success: { bg: "#198754", text: "#ffffff", border: "#146c43" },
@@ -22,12 +24,12 @@ const COLOR_SCHEME = {
   warning: { bg: "#ffc107", text: "#000000", border: "#cc9a06" }
 };
 
-const getIcon = (type) => {
+const getIcon = (type, color) => {
   switch (type) {
     case "gpu":
-      return <FaMicrochip className="me-1" />;
+      return <BsGpuCard size={20} style={{ color }}/>;
     case "rntuple":
-      return <FaDatabase className="me-1" />;
+      return <FaDatabase size={20} style={{ color }} />;
     default:
       return null;
   }
@@ -100,29 +102,26 @@ const RelvalsLabel = ({ tests = {}, type_name }) => {
   );
 
   const currentType = {
-    gpu: { title: "GPU RelVals", field: "gpu", selected: "GPUs" },
-    rntuple: { title: "RNTuple RelVals", field: "other", selected: "Others" }
+    gpu: { title: "RelVals", field: "gpu", selected: "GPUs" },
+    rntuple: { title: "RNTuple", field: "other", selected: "Others" }
   }[type_name];
 
-  const toggleStyle = {
-    backgroundColor: anyFailure
-      ? COLOR_SCHEME.danger.bg
-      : COLOR_SCHEME.success.bg,
-    borderColor: anyFailure
-      ? COLOR_SCHEME.danger.border
-      : COLOR_SCHEME.success.border,
-    color: anyFailure
-      ? COLOR_SCHEME.danger.text
-      : COLOR_SCHEME.success.text,
-    fontWeight: "500",
-    padding: "6px 12px",
-    fontSize: "0.9rem",
-    borderRadius: "6px",
-    display: "inline-flex",
-    alignItems: "center",
-    border: "1px solid",
-    transition: "all 0.2s ease"
-  };
+const toggleStyle = {
+  backgroundColor: anyFailure ? "#f8d7da" : "#e6f7e6",
+  color: anyFailure ? "#842029" : "#2c6e2c",
+  border: anyFailure ? "1px solid #f5c2c7" : "1px solid #b7e0b7",
+  boxShadow: "none",
+  padding: "4px 10px",
+  fontSize: "0.85rem",
+  fontWeight: "500",
+  borderRadius: "4px",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "4px",
+  lineHeight: 1.0,
+  transition: "all 0.2s ease",
+  whiteSpace: "nowrap"
+};
 
   const filteredTests = useMemo(() => {
     const entries = Object.entries(tests).filter(([key]) =>
@@ -174,6 +173,8 @@ const RelvalsLabel = ({ tests = {}, type_name }) => {
       <Dropdown.Item
         key={key}
         href={url}
+        target="_blank"
+        rel="noopener noreferrer"
         style={{ padding: "10px 16px", borderBottom: "1px solid #e9ecef" }}
       >
         <div className="d-flex justify-content-between align-items-center">
@@ -209,19 +210,21 @@ const RelvalsLabel = ({ tests = {}, type_name }) => {
     filteredTests.failed.length + filteredTests.passed.length;
 
   return (
-    <Dropdown className="d-inline-block me-2" autoClose="outside">
+    <Dropdown className="d-inline-block me-1" autoClose="outside">
       <Dropdown.Toggle
+        variant="light"
+        size="sm"
         id={`${type_name}-relvals-toggle`}
         style={toggleStyle}
         title={anyFailure ? "Has failures" : "All tests passed"}
       >
-        {getIcon(type_name)}
-        <span className="mx-1">{currentType.title}</span>
-        {anyFailure ? (
+        {getIcon(type_name, anyFailure ? "#842029" : "#2c6e2c")}
+        <span>{currentType.title}</span>
+        {/* {anyFailure ? (
           <FaExclamationTriangle className="ms-1" />
         ) : (
           <FaCheckCircle className="ms-1" />
-        )}
+        )} */}
       </Dropdown.Toggle>
 
       <Dropdown.Menu

@@ -33,20 +33,38 @@ const ICON_MAP = {
 };
 
 const COLOR_SCHEME = {
-  primary: { bg: "#e9ecef", text: "#495057", border: "#dee2e6" },      // Light gray
-  secondary: { bg: "#f1f3f5", text: "#495057", border: "#e9ecef" },    // Very light gray
-  success: { bg: "#e6f7e6", text: "#2c6e2c", border: "#b7e0b7" },      // Soft green
-
- 
-  danger: { bg: "#f8d7da", text: "#842029", border: "#f5c2c7" },       // Soft red (more visible)
-
-  
-  warning: { bg: "#fff3cd", text: "#664d03", border: "#ffecb5" },      // Soft yellow
-  info: { bg: "#d1ecf1", text: "#0c5460", border: "#bee5eb" },         // Soft blue
-  light: { bg: "#ffffff", text: "#6c757d", border: "#f8f9fa" },        // White
-  dark: { bg: "#e9ecef", text: "#343a40", border: "#dee2e6" },         // Light gray
-  outline: { bg: "#ffffff", text: "#6c757d", border: "#dee2e6" }       // Outline style
+  primary: { bg: "#e9ecef", text: "#495057", border: "#dee2e6" },
+  secondary: { bg: "#f1f3f5", text: "#495057", border: "#e9ecef" },
+  success: { bg: "#e6f7e6", text: "#2c6e2c", border: "#b7e0b7" },
+  danger: { bg: "#f8d7da", text: "#842029", border: "#f5c2c7" },
+  warning: { bg: "#fff3cd", text: "#664d03", border: "#ffecb5" },
+  info: { bg: "#d1ecf1", text: "#0c5460", border: "#bee5eb" },
+  light: { bg: "#ffffff", text: "#6c757d", border: "#f8f9fa" },
+  dark: { bg: "#e9ecef", text: "#343a40", border: "#dee2e6" },
+  outline: { bg: "#ffffff", text: "#6c757d", border: "#dee2e6" }
 };
+
+const GLYPHICON_TO_ICON_MAP = {
+  "glyphicon-ok": ICON_MAP.success,
+  "glyphicon-remove": ICON_MAP.error,
+  "glyphicon-warning-sign": ICON_MAP.warning,
+  "glyphicon-list-alt": ICON_MAP.list,
+  "glyphicon-refresh": ICON_MAP.refresh,
+  "glyphicon-alert": ICON_MAP.warning
+};
+
+const HLT_GROUP_NAMES = new Set(["HLT", "HLT Phase2 Timing"]);
+
+const STATIC_ANALYSIS_GROUP_NAMES = new Set([
+  "Class Versions",
+  "Code complexity metrics",
+  "Flaw finder",
+  "Static Analyzer",
+  "SA thread unsafe modules",
+  "SA thread unsafe EventSetup products",
+  "Header consistency"
+]);
+const RUNTIME_ANALYSIS_GROUP_NAMES = new Set([ "Vtune", "RECO event loop", "Resources Piecharts"]);
 
 class StatusLabels extends Component {
   constructor(props) {
@@ -72,14 +90,48 @@ class StatusLabels extends Component {
   }
 
   static resolveColors(variant, labelColor) {
-    const base = COLOR_SCHEME[variant] || COLOR_SCHEME.secondary;
     if (labelColor === "red") return COLOR_SCHEME.danger;
     if (labelColor === "orange") return COLOR_SCHEME.warning;
-    return base;
+    if (labelColor === "green") return COLOR_SCHEME.success;
+    if (labelColor === "info") return COLOR_SCHEME.info;
+
+    return COLOR_SCHEME[variant] || COLOR_SCHEME.secondary;
+  }
+
+  static getLabelBaseStyle({ variant = "secondary", labelColor, tooltip }) {
+    const colors = StatusLabels.resolveColors(variant, labelColor);
+
+    return {
+      colors,
+      style: {
+        backgroundColor: colors.bg,
+        color: colors.text,
+        fontSize: "0.85rem",
+        fontWeight: "500",
+        padding: "4px 10px",
+        borderRadius: "4px",
+        border: `1px solid ${colors.border}`,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "4px",
+        lineHeight: 1.0,
+        boxShadow: "none",
+        transition: "all 0.2s ease",
+        whiteSpace: "nowrap",
+        minHeight: "30px"
+      }
+    };
   }
 
   static formatLabel({ icon, name, url, labelColor, variant = "secondary", tooltip }) {
-    const colors = StatusLabels.resolveColors(variant, labelColor);
+    const { colors, style } = StatusLabels.getLabelBaseStyle({
+      icon,
+      name,
+      url,
+      labelColor,
+      variant,
+      tooltip
+    });
 
     const content = (
       <>
@@ -87,21 +139,6 @@ class StatusLabels extends Component {
         <span style={{ color: colors.text }}>{name}</span>
       </>
     );
-
-    const baseStyle = {
-      backgroundColor: colors.bg,
-      color: colors.text,
-      fontSize: "0.85rem",
-      fontWeight: "400",
-      padding: "4px 10px",
-      borderRadius: "4px",
-      border: `1px solid ${colors.border}`,
-      display: "inline-flex",
-      alignItems: "center",
-      boxShadow: "none",
-      transition: "none",
-      ...(tooltip ? { cursor: "help" } : {})
-    };
 
     const hoverStyle = url
       ? {
@@ -116,7 +153,7 @@ class StatusLabels extends Component {
           key={uuidv4()}
           href={url}
           className="me-1"
-          style={{ ...baseStyle, ...hoverStyle }}
+          style={{ ...style, ...hoverStyle }}
           target="_blank"
           rel="noopener noreferrer"
           title={tooltip}
@@ -127,7 +164,7 @@ class StatusLabels extends Component {
     }
 
     return (
-      <span key={uuidv4()} className="me-1" style={baseStyle} title={tooltip}>
+      <span key={uuidv4()} className="me-1" style={style} title={tooltip}>
         {content}
       </span>
     );
@@ -139,6 +176,7 @@ class StatusLabels extends Component {
       icon: ICON_MAP.list,
       url: config.getUrl ? config.getUrl(ib, result) : undefined,
       variant: "success",
+      labelColor: "green",
       tooltip: "Found and ready"
     };
   }
@@ -148,6 +186,7 @@ class StatusLabels extends Component {
       name: config.name,
       icon: ICON_MAP.refresh,
       variant: "info",
+      labelColor: "info",
       tooltip: "In progress..."
     };
   }
@@ -157,15 +196,28 @@ class StatusLabels extends Component {
       name: config.name,
       icon: ICON_MAP.error,
       variant: "danger",
+      labelColor: "red",
       tooltip: "Error occurred"
     };
   }
 
-  static renderLabel(config, ib) {
+  static normalizeOutputConfig(outputConfig) {
+    if (!outputConfig) return null;
+
+    return {
+      ...outputConfig,
+      icon:
+        outputConfig.icon ||
+        GLYPHICON_TO_ICON_MAP[outputConfig.glyphicon] ||
+        null
+    };
+  }
+
+  static getLabelOutputConfig(configObj, ib) {
     if (!ib) return null;
 
     let status;
-    const result = ib[config.key];
+    const result = ib[configObj.key];
 
     if (Array.isArray(result)) {
       status = result;
@@ -175,55 +227,157 @@ class StatusLabels extends Component {
       status = result;
     }
 
-    if (config.customResultInterpretation) {
-      status = config.customResultInterpretation(status);
+    if (configObj.customResultInterpretation) {
+      status = configObj.customResultInterpretation(status);
     }
 
     let outputConfig;
 
-   if (status === STATUS_ENUM.passed) {
-  outputConfig = config.ifPassed
-    ? config.ifPassed(ib, result)
-    : {
-        name: config.name,
-        icon: ICON_MAP.success,
-        url: config.getUrl ? config.getUrl(ib, result) : undefined,
-        variant: "success",
-        tooltip: "Test passed"
-      };
-} else if (status === STATUS_ENUM.found) {
-  outputConfig = config.ifFound
-    ? config.ifFound(ib, result)
-    : StatusLabels.defaultFound(config, ib, result);
-} else if ([STATUS_ENUM.inprogress, STATUS_ENUM.inProgress].includes(status)) {
-      outputConfig = config.ifInProgress
-        ? config.ifInProgress(ib, result)
-        : StatusLabels.defaultInProgress(config);
-    } else if (status === STATUS_ENUM.error) {
-      outputConfig = config.ifError
-        ? config.ifError(ib, result)
-        : StatusLabels.defaultError(config);
-    } else if (status === STATUS_ENUM.warning) {
-      outputConfig = config.ifWarning
-        ? config.ifWarning(ib, result)
+    if (status === STATUS_ENUM.passed) {
+      outputConfig = configObj.ifPassed
+        ? configObj.ifPassed(ib, result)
         : {
-            name: config.name,
+            name: configObj.name,
+            icon: ICON_MAP.success,
+            url: configObj.getUrl ? configObj.getUrl(ib, result) : undefined,
+            variant: "success",
+            tooltip: "Test passed"
+          };
+    } else if (status === STATUS_ENUM.found) {
+      outputConfig = configObj.ifFound
+        ? configObj.ifFound(ib, result)
+        : StatusLabels.defaultFound(configObj, ib, result);
+    } else if ([STATUS_ENUM.inprogress, STATUS_ENUM.inProgress].includes(status)) {
+      outputConfig = configObj.ifInProgress
+        ? configObj.ifInProgress(ib, result)
+        : StatusLabels.defaultInProgress(configObj);
+    } else if (status === STATUS_ENUM.error) {
+      outputConfig = configObj.ifError
+        ? configObj.ifError(ib, result)
+        : StatusLabels.defaultError(configObj);
+    } else if (status === STATUS_ENUM.warning) {
+      outputConfig = configObj.ifWarning
+        ? configObj.ifWarning(ib, result)
+        : {
+            name: configObj.name,
             icon: ICON_MAP.warning,
             variant: "warning",
+            labelColor: "orange",
             tooltip: "Warning: check details"
           };
     } else if (status === STATUS_ENUM.success) {
-      outputConfig = config.ifSuccess
-        ? config.ifSuccess(ib, result)
+      outputConfig = configObj.ifSuccess
+        ? configObj.ifSuccess(ib, result)
         : {
-            name: config.name,
+            name: configObj.name,
             icon: ICON_MAP.success,
             variant: "success",
+            labelColor: "green",
             tooltip: "Successfully completed"
           };
     }
 
-    return outputConfig ? StatusLabels.formatLabel(outputConfig) : null;
+    return StatusLabels.normalizeOutputConfig(outputConfig);
+  }
+
+  static renderGroupedDropdown(title, items) {
+    if (!items || items.length === 0) return null;
+      const hasDanger = items.some((item) => item?.labelColor === "red" || item?.variant === "danger");
+      const hasWarning = items.some((item) => item?.labelColor === "orange" || item?.variant === "warning");
+      const hasInProgress = items.some((item) => item?.variant === "info");
+      const allPending = items.every((item) => item?.variant === "info");
+      const allSuccessLikeOrPending = items.every((item) => { const isSuccessLikeOrPending = item?.variant === "success" || item?.variant === "info";
+      const isExplicitFailure = item?.labelColor === "red" || item?.variant === "danger";
+      const isWarningState = item?.labelColor === "orange" || item?.variant === "warning";
+    return isSuccessLikeOrPending && !isExplicitFailure && !isWarningState;
+      });
+
+      const hasAtLeastOneSuccessLike = items.some(
+        (item) => item?.variant === "success"
+      );
+
+      let variant = "secondary";
+      if (hasDanger) {
+        variant = "danger";
+      } else if (allPending) {
+        variant = "secondary";
+      } else if (allSuccessLikeOrPending && hasAtLeastOneSuccessLike) {
+        variant = "success";
+      } else if (hasWarning) {
+        variant = "warning";
+      }
+
+      const colors = COLOR_SCHEME[variant] || COLOR_SCHEME.secondary;
+
+      let mainIcon = null;
+      if (hasInProgress) {
+        mainIcon = ICON_MAP.refresh;
+      } else if (hasDanger) {
+        mainIcon = ICON_MAP.error;
+      } else if (allSuccessLikeOrPending && hasAtLeastOneSuccessLike) {
+        mainIcon = ICON_MAP.success;
+      } else if (hasWarning) {
+        mainIcon = ICON_MAP.warning;
+      }
+
+    return (
+      <Dropdown key={`group-${title}`} className="d-inline-block me-1" autoClose="outside">
+        <Dropdown.Toggle
+          variant="light"
+          size="sm"
+          id={`dropdown-group-${title.replace(/\s+/g, "-").toLowerCase()}`}
+          style={{
+            backgroundColor: colors.bg,
+            borderColor: colors.border,
+            color: colors.text,
+            fontWeight: "400",
+            padding: "4px 10px",
+            fontSize: "0.85rem",
+            boxShadow: "none",
+            display: "inline-flex",
+            alignItems: "center"
+          }}
+          title={title}
+        >
+          {mainIcon && (
+            <span className="me-1" style={{ color: colors.text, display: "inline-flex", alignItems: "center" }}>
+              {mainIcon}
+            </span>
+          )}
+          <span style={{ color: colors.text }}>{title}</span>
+        </Dropdown.Toggle>
+
+        <Dropdown.Menu style={{ minWidth: "240px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+          {items.map((item) => {
+            const itemColors = StatusLabels.resolveColors(item.variant, item.labelColor);
+
+            return (
+              <Dropdown.Item
+                key={`${title}-${item.name}-${uuidv4()}`}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={item.tooltip || item.name}
+                style={{
+                  padding: "8px 12px",
+                  fontSize: "0.85rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px"
+                }}
+              >
+                {item.icon && (
+                  <span style={{ color: itemColors.text, display: "inline-flex", alignItems: "center" }}>
+                    {item.icon}
+                  </span>
+                )}
+                <span>{item.name}</span>
+              </Dropdown.Item>
+            );
+          })}
+        </Dropdown.Menu>
+      </Dropdown>
+    );
   }
 
   static renderIBTag(IBGroup, ibGroupType) {
@@ -300,7 +454,6 @@ class StatusLabels extends Component {
                   title={`View ${displayName}`}
                   style={{ padding: "6px 12px", fontSize: "0.85rem" }}
                 >
-                  {/* IB Tab icon color */}
                   <span className="me-2" style={{ color: "black" }}>{configObj.icon}</span>
                   <span>{displayName}</span>
                 </Dropdown.Item>
@@ -324,34 +477,30 @@ class StatusLabels extends Component {
     const { IBGroup, showOnlyIbTag, ibGroupType, ib } = this.state;
 
     if (showOnlyIbTag) {
-      return null; 
+      return null;
     }
 
     const menuData = [];
+    const generatedLabelConfigs = [];
 
-    // Add IB Tag
     if (ibGroupType !== "IB") {
       const ibTag = StatusLabels.renderIBTag(IBGroup, ibGroupType);
       if (ibTag) menuData.push(ibTag);
     }
 
-    // Add GPU and other data if available
     if (ib) {
-      // GPU Relvals
       if (ib.gpu_data?.relvals && Object.keys(ib.gpu_data.relvals).length > 0) {
         menuData.push(
           <RelvalsLabel key="gpu-relvals" tests={ib.gpu_data.relvals} type_name="gpu" />
         );
       }
 
-      // GPU QA
       if (ib.gpu_data?.qa && Object.keys(ib.gpu_data.qa).length > 0) {
         menuData.push(
           <UnitTestsLabel key="gpu-qa" tests={ib.gpu_data.qa} type_name="gpu" />
         );
       }
 
-      // Other data relvals
       const relvals = ib.other_data?.relvals || {};
       const rntupleRelvals = Object.fromEntries(
         Object.entries(relvals)
@@ -366,20 +515,43 @@ class StatusLabels extends Component {
       }
     }
 
-    // Add status labels from config
     if (statusLabelsConfigs && Array.isArray(statusLabelsConfigs)) {
       statusLabelsConfigs.forEach((conf) => {
-        const label = StatusLabels.renderLabel(conf, ib);
-        if (label) menuData.push(label);
+        const labelConfig = StatusLabels.getLabelOutputConfig(conf, ib);
+        if (labelConfig) {
+          generatedLabelConfigs.push(labelConfig);
+        }
       });
     }
+
+    const hltItems = generatedLabelConfigs.filter((item) => HLT_GROUP_NAMES.has(item.name));
+    const staticAnalysisItems = generatedLabelConfigs.filter((item) => STATIC_ANALYSIS_GROUP_NAMES.has(item.name));
+    const runtimeAnalysisItems = generatedLabelConfigs.filter((item) => RUNTIME_ANALYSIS_GROUP_NAMES.has(item.name));
+    const otherItems = generatedLabelConfigs.filter((item) =>
+      !HLT_GROUP_NAMES.has(item.name) &&
+      !STATIC_ANALYSIS_GROUP_NAMES.has(item.name) &&
+      !RUNTIME_ANALYSIS_GROUP_NAMES.has(item.name)
+    );
+
+    if (hltItems.length > 0) {
+      menuData.push(StatusLabels.renderGroupedDropdown("HLT", hltItems));
+    }
+    if (staticAnalysisItems.length > 0) {
+      menuData.push(StatusLabels.renderGroupedDropdown("Static Analysis", staticAnalysisItems));
+    }
+    if (runtimeAnalysisItems.length > 0) {
+      menuData.push(StatusLabels.renderGroupedDropdown("Run time analysis", runtimeAnalysisItems));
+    }
+    otherItems.forEach((item) => {
+      menuData.push(StatusLabels.formatLabel(item));
+    });
 
     const validMenuData = menuData.filter((item) => item != null);
 
     return (
-      <div className="d-flex flex-wrap align-items-center" style={{ gap: "4px" }}>
+     <div className="dd-flex flex-wrap align-items-center" style={{  marginLeft: "15px" }}>
         {validMenuData}
-      </div>
+    </div>
     );
   }
 }
