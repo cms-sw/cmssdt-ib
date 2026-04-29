@@ -2,12 +2,9 @@ import React, { Component } from 'react';
 import IBGroupFrame from './IBGroupFrame';
 import { groupAndTransformIBDataList } from '../../Utils/processing';
 import PropTypes from 'prop-types';
-import { OverlayTrigger, Tooltip, Spinner } from 'react-bootstrap';
-import { GoGitPullRequest } from "react-icons/go";
+import { Spinner } from 'react-bootstrap';
 import {
     FaCodeBranch,
-    FaPlus,
-    FaMinus,
     FaThumbtack,
     FaArrowUp,
     FaArrowDown,
@@ -19,7 +16,6 @@ import {
     FaEyeSlash
 } from 'react-icons/fa';
 
-// Helper function to check if an architecture matches selected filters
 const archMatchesFilters = (arch, activeArchs) => {
     if (!arch) return false;
 
@@ -57,6 +53,7 @@ class IBGroups extends Component {
         data: PropTypes.array,
         releaseQue: PropTypes.string.isRequired,
         activeArchs: PropTypes.object,
+        showAllPullRequests: PropTypes.bool,
         loading: PropTypes.bool,
         error: PropTypes.oneOfType([
             PropTypes.string,
@@ -70,6 +67,7 @@ class IBGroups extends Component {
     static defaultProps = {
         data: [],
         activeArchs: { os: [], cpu: [], compiler: [] },
+        showAllPullRequests: false,
         loading: false,
         error: null,
         isUnauthorized: false,
@@ -81,7 +79,6 @@ class IBGroups extends Component {
         super(props);
 
         this.groupRefs = {};
-        this.toggleLoadingTimer = null;
 
         this.state = {
             originalData: props.data || [],
@@ -89,12 +86,11 @@ class IBGroups extends Component {
             releaseQue: props.releaseQue,
             activeArchs: props.activeArchs || { os: [], cpu: [], compiler: [] },
             activeArchsSignature: getArchStateSignature(props.activeArchs || { os: [], cpu: [], compiler: [] }),
-            expandAllCommits: false,
             showNavigator: false,
-            isToggleLoading: false,
             collapsedGroups: {}
         };
     }
+
     toggleGroupCollapse = (groupKey) => {
         this.setState((prevState) => ({
             collapsedGroups: {
@@ -103,14 +99,6 @@ class IBGroups extends Component {
             }
         }));
     };
-  toggleGroupCollapse = (groupKey) => {
-    this.setState((prevState) => ({
-        collapsedGroups: {
-            ...prevState.collapsedGroups,
-            [groupKey]: !prevState.collapsedGroups[groupKey]
-        }
-    }));
-};
 
     toggleAllReleasePanels = () => {
         const filteredData = this.getFilteredData();
@@ -133,6 +121,7 @@ class IBGroups extends Component {
             collapsedGroups: nextCollapsedGroups
         });
     };
+
     static getDerivedStateFromProps(nextProps, prevState) {
         const nextArchs = nextProps.activeArchs || { os: [], cpu: [], compiler: [] };
         const nextArchsSignature = getArchStateSignature(nextArchs);
@@ -152,30 +141,9 @@ class IBGroups extends Component {
                 activeArchsSignature: nextArchsSignature
             };
         }
+
         return null;
     }
-
-    componentWillUnmount() {
-        if (this.toggleLoadingTimer) {
-            clearTimeout(this.toggleLoadingTimer);
-        }
-    }
-
-    toggleAllCommits = () => {
-        if (this.state.isToggleLoading) return;
-
-        this.setState(
-            (prevState) => ({
-                expandAllCommits: !prevState.expandAllCommits,
-                isToggleLoading: true
-            }),
-            () => {
-                this.toggleLoadingTimer = setTimeout(() => {
-                    this.setState({ isToggleLoading: false });
-                }, 450);
-            }
-        );
-    };
 
     toggleNavigator = () => {
         this.setState((prevState) => ({
@@ -211,13 +179,10 @@ class IBGroups extends Component {
 
         if (!hasFilters) return true;
 
-        // Always keep nextIB entries visible
         if (item?.isIB === false && item?.next_ib === true) {
             return true;
         }
 
-        // Keep entries visible if they do not carry architecture test info
-        // (older / pre releases / commit-only style entries)
         if (!item.tests_archs || !Array.isArray(item.tests_archs) || item.tests_archs.length === 0) {
             return true;
         }
@@ -257,6 +222,7 @@ class IBGroups extends Component {
 
         return `${releaseName}-${flavor}-${ibDate}-${nextIbFlag}-${isIbFlag}`;
     };
+
     getGroupLabel = (group) => {
         if (!Array.isArray(group) || group.length === 0) return 'Unknown Release';
 
@@ -267,12 +233,8 @@ class IBGroups extends Component {
 
         return first.release_name || first.id || 'Unknown Release';
     };
-    renderStatusCard = ({
-        icon,
-        title,
-        message,
-        tone = 'neutral'
-    }) => {
+
+    renderStatusCard = ({ icon, title, message, tone = 'neutral' }) => {
         const toneStyles = {
             neutral: {
                 background: '#f8fafc',
@@ -341,13 +303,7 @@ class IBGroups extends Component {
                         {icon}
                     </div>
 
-                    <h5
-                        className="mb-2"
-                        style={{
-                            color: colors.titleColor,
-                            fontWeight: 700
-                        }}
-                    >
+                    <h5 className="mb-2" style={{ color: colors.titleColor, fontWeight: 700 }}>
                         {title}
                     </h5>
 
@@ -391,135 +347,50 @@ class IBGroups extends Component {
         );
     }
 
-    renderFloatingToggle() {
-        const { expandAllCommits, isToggleLoading } = this.state;
-        const NAVBAR_OFFSET = 72;
+    renderCornerButtons() {
+        const filteredData = this.getFilteredData();
+
+        const allCollapsed =
+            filteredData.length > 0 &&
+            filteredData.every((group, index) => {
+                const groupKey = this.getGroupKey(group, index);
+                return !!this.state.collapsedGroups[groupKey];
+            });
 
         return (
             <div
                 style={{
                     position: 'fixed',
                     right: '16px',
-                    top: `${NAVBAR_OFFSET}px`,
-                    zIndex: 1050
+                    bottom: '20px',
+                    zIndex: 1050,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
                 }}
             >
-                <OverlayTrigger
-                    placement="left"
-                    overlay={
-                        <Tooltip id="commits-toggle-tooltip">
-                            {isToggleLoading
-                                ? 'Updating commits & PRs...'
-                                : expandAllCommits
-                                  ? 'Collapse all commits & PRs'
-                                  : 'Expand all commits & PRs'}
-                        </Tooltip>
-                    }
+                <button
+                    onClick={this.toggleAllReleasePanels}
+                    title={allCollapsed ? "Show all releases" : "Hide all releases"}
+                    style={miniToolButtonStyle}
                 >
-                    <button
-                        onClick={this.toggleAllCommits}
-                        disabled={isToggleLoading}
-                        aria-label={expandAllCommits ? 'Collapse all commits and PRs' : 'Expand all commits and PRs'}
-                        style={{
-                            ...floatingToggleButtonStyle,
-                            background: expandAllCommits ? '#1d4ed8' : '#ffffff',
-                            color: expandAllCommits ? '#ffffff' : '#334155',
-                            border: expandAllCommits ? '1px solid #1d4ed8' : '1px solid #cbd5e1',
-                            position: 'relative',
-                            overflow: 'visible',
-                            opacity: isToggleLoading ? 0.88 : 1,
-                            cursor: isToggleLoading ? 'wait' : 'pointer'
-                        }}
-                    >
-                        {isToggleLoading ? (
-                            <Spinner animation="border" size="sm" role="status" />
-                        ) : (
-                            <>
-                                <GoGitPullRequest size={20} />
-                                <span
-                                    style={{
-                                        position: 'absolute',
-                                        top: '4px',
-                                        right: '4px',
-                                        width: '16px',
-                                        height: '16px',
-                                        borderRadius: '50%',
-                                        background: expandAllCommits ? '#ef4444' : '#22c55e',
-                                        color: '#ffffff',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '10px',
-                                        fontWeight: 'bold',
-                                        lineHeight: 1,
-                                        boxShadow: '0 2px 6px rgba(0,0,0,0.18)'
-                                    }}
-                                >
-                                    {expandAllCommits ? <FaMinus size={8} /> : <FaPlus size={8} />}
-                                </span>
-                            </>
-                        )}
-                    </button>
-                </OverlayTrigger>
+                    {allCollapsed ? <FaEye size={12} /> : <FaEyeSlash size={12} />}
+                </button>
+
+                <button onClick={this.scrollToTop} title="Go to top" style={miniToolButtonStyle}>
+                    <FaArrowUp size={12} />
+                </button>
+
+                <button onClick={this.scrollToBottom} title="Go to bottom" style={miniToolButtonStyle}>
+                    <FaArrowDown size={12} />
+                </button>
+
+                <button onClick={this.toggleNavigator} title="Show releases" style={pinControlButtonStyle}>
+                    <FaThumbtack size={12} />
+                </button>
             </div>
         );
     }
-
-    renderCornerButtons() {
-            const filteredData = this.getFilteredData();
-
-            const allCollapsed =
-                filteredData.length > 0 &&
-                filteredData.every((group, index) => {
-                    const groupKey = this.getGroupKey(group, index);
-                    return !!this.state.collapsedGroups[groupKey];
-                });
-
-            return (
-                <div
-                    style={{
-                        position: 'fixed',
-                        right: '16px',
-                        bottom: '20px',
-                        zIndex: 1050,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px'
-                    }}
-                >
-                    <button
-                        onClick={this.toggleAllReleasePanels}
-                        title={allCollapsed ? "Show all releases" : "Hide all releases"}
-                        style={miniToolButtonStyle}
-                    >
-                        {allCollapsed ? <FaEye size={12} /> : <FaEyeSlash size={12} />}
-                    </button>
-                    <button
-                        onClick={this.scrollToTop}
-                        title="Go to top"
-                        style={miniToolButtonStyle}
-                    >
-                        <FaArrowUp size={12} />
-                    </button>
-
-                    <button
-                        onClick={this.scrollToBottom}
-                        title="Go to bottom"
-                        style={miniToolButtonStyle}
-                    >
-                        <FaArrowDown size={12} />
-                    </button>
-
-                    <button
-                        onClick={this.toggleNavigator}
-                        title="Show releases"
-                        style={pinControlButtonStyle}
-                    >
-                        <FaThumbtack size={12} />
-                    </button>
-                </div>
-            );
-        }
 
     renderNavigator(groups) {
         const { showNavigator } = this.state;
@@ -528,10 +399,7 @@ class IBGroups extends Component {
 
         return (
             <>
-                <div
-                    onClick={this.toggleNavigator}
-                    style={navigatorBackdropStyle}
-                />
+                <div onClick={this.toggleNavigator} style={navigatorBackdropStyle} />
 
                 <div style={navigatorOverlayStyle}>
                     <div style={navigatorHeaderStyle}>
@@ -539,11 +407,7 @@ class IBGroups extends Component {
                             Jump to release
                         </strong>
 
-                        <button
-                            onClick={this.toggleNavigator}
-                            title="Close"
-                            style={closeNavigatorButtonStyle}
-                        >
+                        <button onClick={this.toggleNavigator} title="Close" style={closeNavigatorButtonStyle}>
                             <FaTimes size={12} />
                         </button>
                     </div>
@@ -571,8 +435,15 @@ class IBGroups extends Component {
     }
 
     render() {
-        const { releaseQue, activeArchs, expandAllCommits, collapsedGroups } = this.state;
-        const { loading, error, isUnauthorized, isNetworkError } = this.props;
+        const { releaseQue, activeArchs, collapsedGroups } = this.state;
+
+        const {
+            loading,
+            error,
+            isUnauthorized,
+            isNetworkError,
+            showAllPullRequests
+        } = this.props;
 
         const filteredData = this.getFilteredData();
 
@@ -630,11 +501,10 @@ class IBGroups extends Component {
 
         return (
             <div style={{ position: 'relative' }}>
-                {this.renderFloatingToggle()}
                 {this.renderCornerButtons()}
                 {this.renderNavigator(filteredData)}
 
-               {filteredData.map((IBGroup, index) => {
+                {filteredData.map((IBGroup, index) => {
                     const groupKey = this.getGroupKey(IBGroup, index);
                     const isCollapsed = !!collapsedGroups[groupKey];
 
@@ -652,7 +522,8 @@ class IBGroups extends Component {
                             <IBGroupFrame
                                 IBGroup={IBGroup}
                                 releaseQue={releaseQue}
-                                expandAllCommits={expandAllCommits}
+                                expandAllCommits={showAllPullRequests}
+                                showPullRequests={showAllPullRequests}
                                 isCollapsed={isCollapsed}
                                 onToggleCollapse={() => this.toggleGroupCollapse(groupKey)}
                             />
@@ -690,18 +561,6 @@ const pinControlButtonStyle = {
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer'
-};
-
-const floatingToggleButtonStyle = {
-    width: '42px',
-    height: '42px',
-    borderRadius: '50%',
-    boxShadow: '0 8px 20px rgba(15, 23, 42, 0.14)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease'
 };
 
 const navigatorBackdropStyle = {

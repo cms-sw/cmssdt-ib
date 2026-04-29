@@ -1,5 +1,5 @@
-// src/components/RelValComponents/RelValNavigation.js
 import React, { useState, useRef, useEffect } from "react";
+import { BsClipboard, BsCheck } from "react-icons/bs";
 import {
   Navbar,
   Button,
@@ -40,7 +40,17 @@ const RelValNavigation = ({
   const [showFilters, setShowFilters] = useState(false); // hidden on load
   const navRef = useRef(null);
   const lastReportedHeightRef = useRef(0);
+  const [copied, setCopied] = useState(false);
 
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(relvalInfo);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error("Copy failed", err);
+    }
+  };
   const reportHeight = () => {
     if (!navRef.current || !onHeightChange) return;
 
@@ -124,15 +134,21 @@ const RelValNavigation = ({
                 </Button>
 
                 <div
-                  className="fw-semibold"
-                  style={{
-                    color: "#ffffff",
-                    fontSize: "1rem",
-                    lineHeight: 1.2,
-                    marginLeft: "4px"
-                  }}
+                  className="fw-semibold relval-text"
+                  
                 >
-                  RelVals: {relvalInfo}
+                  <span className="label">RelVals:</span>
+                  <span className="relval-inline">
+                    {relvalInfo}
+
+                    <button
+                      onClick={handleCopy}
+                      className={`relval-copy-btn ${copied ? "copied" : ""}`}
+                      title={copied ? "Copied!" : "Copy RelVal"}
+                    >
+                      {copied ? <BsCheck size={13} /> : <BsClipboard size={13} />}
+                    </button>
+                  </span>
                 </div>
               </div>
 
@@ -559,7 +575,49 @@ const RelValNavigation = ({
         .legend-container::-webkit-scrollbar-thumb:hover {
           background: #999;
         }
+        .relval-text {
+            color: #ffffff;
+            font-size: 1rem;
+            margin-left: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: nowrap; 
+          }
 
+          /* keeps relval + icon glued together */
+          .relval-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+          }
+
+          /* copy button */
+          .relval-copy-btn {
+            border: none;
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            border-radius: 6px;
+            padding: 2px 6px;
+            display: inline-flex; 
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+
+          /* hover */
+          .relval-copy-btn:hover {
+            background: rgba(255, 255, 255, 0.18);
+          }
+
+          /* copied state */
+          .relval-copy-btn.copied {
+            background: rgba(40, 167, 69, 0.2);
+            color: #7CFFB2;
+          }
+          
         @media (max-width: 991px) {
           #relval-navigation .container-fluid {
             padding-left: 14px !important;

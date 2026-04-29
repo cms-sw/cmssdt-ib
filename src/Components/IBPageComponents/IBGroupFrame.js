@@ -5,8 +5,27 @@ import ComparisonTable from "./ComparisonTable";
 import { Card } from "react-bootstrap";
 import { checkIfCommitsAreEmpty, checkIfTableIsEmpty } from "../../Utils/processing";
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { GoGitPullRequest } from "react-icons/go";
 
 class IBGroupFrame extends PureComponent {
+    state = {
+        showPullRequests: this.props.showPullRequests || false
+    };
+
+    componentDidUpdate(prevProps) {
+        if (prevProps.showPullRequests !== this.props.showPullRequests) {
+            this.setState({
+                showPullRequests: this.props.showPullRequests
+            });
+        }
+    }
+
+    togglePullRequests = (e) => {
+        e.stopPropagation();
+        this.setState((prev) => ({
+            showPullRequests: !prev.showPullRequests
+        }));
+    };
 
     getIbGroupType(IBGroup) {
         const firstIbFromList = IBGroup[0];
@@ -18,7 +37,8 @@ class IBGroupFrame extends PureComponent {
     }
 
     render() {
-        const { IBGroup, releaseQue, expandAllCommits, isCollapsed, onToggleCollapse } = this.props;
+        const { IBGroup, releaseQue, isCollapsed, onToggleCollapse } = this.props;
+        const { showPullRequests } = this.state;
 
         const firstIbFromList = IBGroup[0];
         if (!firstIbFromList) {
@@ -40,11 +60,11 @@ class IBGroupFrame extends PureComponent {
             case 'IB': {
                 const isIBGroupTableEmpty = checkIfTableIsEmpty({
                     fieldsToCheck: ['builds', 'utests', 'relvals', 'addons', 'dupDict'],
-                    IBGroup: IBGroup
+                    IBGroup
                 });
 
                 const isCommitsEmpty = checkIfCommitsAreEmpty({
-                    IBGroup: IBGroup
+                    IBGroup
                 });
 
                 if (isCommitsEmpty && isIBGroupTableEmpty) {
@@ -63,7 +83,7 @@ class IBGroupFrame extends PureComponent {
                 }
 
                 commitPanelProps = {
-                    defaultExpanded: !isCommitsEmpty,
+                    defaultExpanded: true
                 };
                 break;
             }
@@ -112,6 +132,21 @@ class IBGroupFrame extends PureComponent {
             padding: '0.55rem 0.9rem'
         };
 
+        const prButtonStyle = {
+            border: '1px solid #bfdbfe',
+            background: showPullRequests ? '#2563eb' : '#ffffff',
+            color: showPullRequests ? '#ffffff' : '#1d4ed8',
+            borderRadius: '999px',
+            width: '28px',
+            height: '28px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+            flexShrink: 0
+        };
+
         return (
             <Card className="mb-3" style={cardStyle}>
                 <Card.Header
@@ -128,72 +163,113 @@ class IBGroupFrame extends PureComponent {
                     title={isCollapsed ? `Show ${panelHeader}` : `Hide ${panelHeader}`}
                 >
                     {isNextIB ? (
-    <div
-        style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '10px',
-            flexWrap: 'wrap',
-            width: '100%'
-        }}
-    >
-        <strong>{panelHeader}</strong>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '10px',
+                                    flexWrap: 'wrap',
+                                    width: '100%'
+                                }}
+                            >
+                                <button
+                                    type="button"
+                                    onClick={this.togglePullRequests}
+                                    title={showPullRequests ? "Hide Pull Requests" : "Show Pull Requests"}
+                                    aria-label={showPullRequests ? "Hide Pull Requests" : "Show Pull Requests"}
+                                    aria-pressed={showPullRequests}
+                                    style={prButtonStyle}
+                                >
+                                    <GoGitPullRequest size={16} />
+                                </button>
 
-        <span
-            style={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                padding: '3px 10px',
-                borderRadius: '999px',
-                background: '#2563eb',
-                color: '#ffffff'
-            }}
-        >
-            Upcoming
-        </span>
+                                <strong>{panelHeader}</strong>
 
-        <div
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-        >
-            {ibTagDropdown}
-        </div>
-    </div>
-) : (
-    <>
-         <strong>{panelHeader}</strong>
+                                <span
+                                    style={{
+                                        fontSize: '0.75rem',
+                                        fontWeight: 700,
+                                        padding: '3px 10px',
+                                        borderRadius: '999px',
+                                        background: '#2563eb',
+                                        color: '#ffffff'
+                                    }}
+                                >
+                                    Upcoming
+                                </span>
 
-                    <span
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#1d4ed8',
-                            fontSize: '0.95rem',
-                            marginLeft: 'auto'
-                        }}
-                    >
-                        {isCollapsed ? <FaEyeSlash /> : <FaEye />}
-                    </span>
-                </>
-            )}
+                                <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                >
+                                    {ibTagDropdown}
+                                </div>
+                            </div>
+                        ) : (
+                        <>
+                            <div
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    minWidth: 0
+                                }}
+                            >
+                                <button
+                                    type="button"
+                                    onClick={this.togglePullRequests}
+                                    title={showPullRequests ? "Hide Pull Requests" : "Show Pull Requests"}
+                                    aria-label={showPullRequests ? "Hide Pull Requests" : "Show Pull Requests"}
+                                    aria-pressed={showPullRequests}
+                                    style={prButtonStyle}
+                                >
+                                    <GoGitPullRequest size={16} />
+                                </button>
+
+                                <strong>{panelHeader}</strong>
+                            </div>
+
+                            <span
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#1d4ed8',
+                                    fontSize: '0.95rem',
+                                    marginLeft: 'auto'
+                                }}
+                            >
+                                {isCollapsed ? <FaEyeSlash /> : <FaEye />}
+                            </span>
+                        </>
+                    )}
                 </Card.Header>
 
                 {!isCollapsed && (
-                    <Card.Body style={{ padding: "0.25rem 0.5rem 0.5rem 0.5rem" }}>
+                    <Card.Body style={{ padding: "0.25rem 0.5rem 0.5rem 0.5rem", overflowX: "auto" }}>
                         {statusLabels}
                         {comparisonTable}
-                        <Commits
-                            commitPanelProps={commitPanelProps}
-                            data={IBGroup}
-                            expandAllCommits={expandAllCommits}
-                        />
+
+                        {showPullRequests && (
+                            <Commits
+                                commitPanelProps={{
+                                    ...commitPanelProps,
+                                    defaultExpanded: true
+                                }}
+                                data={IBGroup}
+                                expandAllCommits={true}
+                            />
+                        )}
                     </Card.Body>
                 )}
             </Card>
         );
     }
 }
+
+IBGroupFrame.defaultProps = {
+    showPullRequests: false
+};
 
 export default IBGroupFrame;
