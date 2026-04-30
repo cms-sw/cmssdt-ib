@@ -163,8 +163,8 @@ const styles = {
   navTabsWrap: {
     background: THEME.surfaceMuted,
     borderBottom: `1px solid ${THEME.border}`,
-    padding: "0.35rem 0.5rem",
-    gap: "0.35rem"
+    padding: "0.2rem 0.50rem",
+    gap: "0.25rem"
   },
   tabLink: (isActive) => ({
     backgroundColor: isActive ? THEME.surface : "transparent",
@@ -173,10 +173,10 @@ const styles = {
     borderBottom: isActive
       ? `1px solid ${THEME.surface}`
       : `1px solid transparent`,
-    borderRadius: "10px 10px 0 0",
+    borderRadius: "7px 7px 0 0",
     padding: "0.45rem 0.8rem",
     fontWeight: 800,
-    fontSize: "0.85rem",
+    fontSize: "0.75rem",
     transition: "background-color 0.15s ease, border-color 0.15s ease"
   }),
   tabPane: {

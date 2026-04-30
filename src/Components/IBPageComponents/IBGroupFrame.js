@@ -4,12 +4,21 @@ import StatusLabels from "./StatusLabels";
 import ComparisonTable from "./ComparisonTable";
 import { Card } from "react-bootstrap";
 import { checkIfCommitsAreEmpty, checkIfTableIsEmpty } from "../../Utils/processing";
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaCopy  } from 'react-icons/fa';
 import { GoGitPullRequest } from "react-icons/go";
 
 class IBGroupFrame extends PureComponent {
     state = {
         showPullRequests: this.props.showPullRequests || false
+    };
+
+    copyToClipboard = (e, text) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!text) return;
+
+        navigator.clipboard.writeText(text);
     };
 
     componentDidUpdate(prevProps) {
@@ -147,6 +156,20 @@ class IBGroupFrame extends PureComponent {
             flexShrink: 0
         };
 
+        const copyButtonStyle = {
+            border: '1px solid #bfdbfe',
+            background: '#ffffff',
+            color: '#1d4ed8',
+            borderRadius: '999px',
+            width: '26px',
+            height: '26px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+            flexShrink: 0
+        };
         return (
             <Card className="mb-3" style={cardStyle}>
                 <Card.Header
@@ -185,7 +208,7 @@ class IBGroupFrame extends PureComponent {
                                 </button>
 
                                 <strong>{panelHeader}</strong>
-
+                
                                 <span
                                     style={{
                                         fontSize: '0.75rem',
@@ -228,6 +251,15 @@ class IBGroupFrame extends PureComponent {
                                 </button>
 
                                 <strong>{panelHeader}</strong>
+                                 <button
+                                    type="button"
+                                    onClick={(e) => this.copyToClipboard(e, panelHeader)}
+                                    title={`Copy ${panelHeader}`}
+                                    aria-label={`Copy ${panelHeader}`}
+                                    style={copyButtonStyle}
+                                >
+                                    <FaCopy size={12} />
+                                </button>
                             </div>
 
                             <span
