@@ -549,7 +549,7 @@ class StatusLabels extends Component {
     const validMenuData = menuData.filter((item) => item != null);
 
     return (
-     <div className="dd-flex flex-wrap align-items-center" style={{  marginLeft: "15px" }}>
+     <div className="d-flex flex-wrap align-items-center" style={{  marginLeft: "15px" }}>
         {validMenuData}
     </div>
     );

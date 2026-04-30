@@ -30,7 +30,8 @@ import {
   FaPlus,
   FaClipboardList,
   FaLayerGroup,
-  FaCubes
+  FaCubes,
+  FaCopy
 } from 'react-icons/fa';
 
 const { tooltipDelayInMs, urls } = config;
@@ -456,6 +457,15 @@ const statusIcons = {
   info: <FaPlay className="me-1" size={10} />
 };
 
+const copyToClipboard = (e, text) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  if (!text) return;
+
+  navigator.clipboard.writeText(text);
+};
+
 const ComparisonTable = ({ data = [], releaseQue }) => {
   const { getActiveArchsForQue = () => [], getColorsSchemeForQue = () => ({}) } = useShowArch();
 
@@ -792,6 +802,28 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                 fill: currentColor;
               }
 
+              .flavor-card-wrapper {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+              }
+
+              .flavor-copy-button {
+                opacity: 0;
+                border: none;
+                background: transparent;
+                color: #475569;
+                padding: 0;
+                display: inline-flex;
+                align-items: center;
+                cursor: pointer;
+              }
+
+              .flavor-card-wrapper:hover .flavor-copy-button {
+                opacity: 1;
+              }
+
               @media (max-width: 768px) {
                 .name-column {
                   width: 42px !important;
@@ -843,36 +875,33 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                   </div>
                 </th>
 
-                {archsByIb.map((item) => {
+                {archsByIb.map((item, pos) => {
                   if (!item.archs?.length) return null;
 
                   const flavorLabel = formatFlavorLabel(item.flavor);
-                  const flavorTag = item.current_tag;
-                  const flavorLink = flavorTag
-                    ? `https://github.com/cms-sw/cmssw/tree/${flavorTag}`
+
+                  const releaseNameToCopy =
+                    item.current_tag ||
+                    data[pos]?.release_name ||
+                    '';
+
+                  const flavorLink = releaseNameToCopy
+                    ? `https://github.com/cms-sw/cmssw/tree/${releaseNameToCopy}`
                     : null;
 
-                  const flavorCard = (
-                    <div
-                      className="flavor-card"
-                      style={{
-                        background: FLAVOR_CARDS[0].bg,
-                        color: FLAVOR_CARDS[0].text,
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.82rem',
-                        fontWeight: 800,
-                        margin: '0 auto',
-                        cursor: flavorLink ? 'pointer' : 'default'
-                      }}
-                      title={flavorTag ? `Open ${flavorTag}` : flavorLabel}
-                    >
-                      {flavorLabel}
-                    </div>
-                  );
+                  const flavorCardStyle = {
+                    background: FLAVOR_CARDS[0].bg,
+                    color: FLAVOR_CARDS[0].text,
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.82rem',
+                    fontWeight: 800,
+                    margin: '0 auto',
+                    cursor: flavorLink ? 'pointer' : 'default'
+                  };
 
                   return (
                     <th
@@ -884,18 +913,37 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                         backgroundColor: THEME.light
                       }}
                     >
-                      {flavorLink ? (
-                        <a
-                          href={flavorLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ textDecoration: 'none', display: 'inline-block' }}
-                        >
-                          {flavorCard}
-                        </a>
-                      ) : (
-                        flavorCard
-                      )}
+                      <div className="flavor-card-wrapper">
+                        {flavorLink ? (
+                          <a
+                            href={flavorLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ textDecoration: 'none', display: 'inline-block' }}
+                            title={`Open ${releaseNameToCopy}`}
+                          >
+                            <div className="flavor-card" style={flavorCardStyle}>
+                              {flavorLabel}
+                            </div>
+                          </a>
+                        ) : (
+                          <div className="flavor-card" style={flavorCardStyle} title={flavorLabel}>
+                            {flavorLabel}
+                          </div>
+                        )}
+
+                        {releaseNameToCopy && (
+                          <button
+                            type="button"
+                            className="flavor-copy-button"
+                            title={`Copy ${releaseNameToCopy}`}
+                            aria-label={`Copy ${releaseNameToCopy}`}
+                            onClick={(e) => copyToClipboard(e, releaseNameToCopy)}
+                          >
+                            <FaCopy size={11} />
+                          </button>
+                        )}
+                      </div>
                     </th>
                   );
                 })}
