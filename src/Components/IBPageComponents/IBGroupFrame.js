@@ -7,18 +7,48 @@ import { checkIfCommitsAreEmpty, checkIfTableIsEmpty } from "../../Utils/process
 import { FaEye, FaEyeSlash, FaCopy  } from 'react-icons/fa';
 import { GoGitPullRequest } from "react-icons/go";
 
+const copyText = (text) => {
+    if (!text) return;
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text);
+        return;
+    }
+
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+        document.execCommand('copy');
+    } finally {
+        document.body.removeChild(textArea);
+    }
+};
+
 class IBGroupFrame extends PureComponent {
     state = {
-        showPullRequests: this.props.showPullRequests || false
+        showPullRequests: this.props.showPullRequests || false,
+        copiedText: null
     };
 
     copyToClipboard = (e, text) => {
         e.preventDefault();
         e.stopPropagation();
 
-        if (!text) return;
+        copyText(text);
+        
+        this.setState({ copiedText: text });
 
-        navigator.clipboard.writeText(text);
+        setTimeout(() => {
+            this.setState({ copiedText: null });
+        }, 1500);
     };
 
     componentDidUpdate(prevProps) {
@@ -258,7 +288,11 @@ class IBGroupFrame extends PureComponent {
                                     aria-label={`Copy ${panelHeader}`}
                                     style={copyButtonStyle}
                                 >
-                                    <FaCopy size={12} />
+                                    {this.state.copiedText === panelHeader ? (
+                                        <span style={{ fontSize: '12px' }}>✓</span>
+                                    ) : (
+                                        <FaCopy size={12} />
+                                    )}
                                 </button>
                             </div>
 
