@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import { OverlayTrigger, Table, Tooltip } from "react-bootstrap";
 import {
@@ -457,17 +457,46 @@ const statusIcons = {
   info: <FaPlay className="me-1" size={10} />
 };
 
-const copyToClipboard = (e, text) => {
-  e.preventDefault();
-  e.stopPropagation();
-
+const copyText = (text) => {
   if (!text) return;
 
-  navigator.clipboard.writeText(text);
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.left = '-999999px';
+  textArea.style.top = '-999999px';
+
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  try {
+    document.execCommand('copy');
+  } finally {
+    document.body.removeChild(textArea);
+  }
 };
 
 const ComparisonTable = ({ data = [], releaseQue }) => {
+  const [copiedText, setCopiedText] = useState(null);
   const { getActiveArchsForQue = () => [], getColorsSchemeForQue = () => ({}) } = useShowArch();
+  const handleCopy = (e, text) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    copyText(text);
+
+    setCopiedText(text);
+
+    setTimeout(() => {
+      setCopiedText(null);
+    }, 1500);
+  };
 
   const activeArchs = getActiveArchsForQue(releaseQue);
   const archColorScheme = getColorsSchemeForQue(releaseQue);
@@ -936,11 +965,15 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                           <button
                             type="button"
                             className="flavor-copy-button"
-                            title={`Copy ${releaseNameToCopy}`}
-                            aria-label={`Copy ${releaseNameToCopy}`}
-                            onClick={(e) => copyToClipboard(e, releaseNameToCopy)}
+                            title={copiedText === releaseNameToCopy ? 'Copied!' : `Copy ${releaseNameToCopy}`}
+                            aria-label={copiedText === releaseNameToCopy ? 'Copied!' : `Copy ${releaseNameToCopy}`}
+                            onClick={(e) => handleCopy(e, releaseNameToCopy)}
                           >
-                            <FaCopy size={11} />
+                            {copiedText === releaseNameToCopy ? (
+                              <FaCheck size={11} />
+                            ) : (
+                              <FaCopy size={11} />
+                            )}
                           </button>
                         )}
                       </div>
