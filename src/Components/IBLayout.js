@@ -45,9 +45,15 @@ class IBLayout extends Component {
             loading: false,
             error: null,
             isUnauthorized: false,
-            isNetworkError: false
+            isNetworkError: false,
+            showAllPullRequests: false
         };
     }
+    toggleAllPullRequests = () => {
+        this.setState((prevState) => ({
+            showAllPullRequests: !prevState.showAllPullRequests
+        }));
+    };
 
     componentDidMount() {
         this._isMounted = true;
@@ -264,7 +270,7 @@ class IBLayout extends Component {
     }
 
     render() {
-        const { releaseQue, toLinks, nameList, all_release_queues, loading, error, isUnauthorized, isNetworkError } = this.state;
+        const { releaseQue, toLinks, nameList, all_release_queues, loading, error, isUnauthorized, isNetworkError, showAllPullRequests } = this.state;
 
         const filteredData = this.filterListToShow();
 
@@ -272,6 +278,8 @@ class IBLayout extends Component {
             <div className="container-fluid px-0" >
                 <Navigation
                     toLinks={toLinks}
+                    showAllPullRequests={showAllPullRequests}
+                    onToggleAllPullRequests={this.toggleAllPullRequests}
                     flaworControl={
                         <ToggleButtonGroupControlled
                             nameList={nameList}
@@ -285,6 +293,7 @@ class IBLayout extends Component {
                 <IBGroupsWithArch
                     data={filteredData}
                     releaseQue={releaseQue}
+                    showAllPullRequests={showAllPullRequests}
                     loading={loading}
                     error={error}
                     isUnauthorized={isUnauthorized}

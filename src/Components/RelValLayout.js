@@ -342,7 +342,7 @@ const RelValLayout = () => {
       <RelValNavigation
         id="relval-navigation"
         que={params.que}
-        relvalInfo={`${params.que} ${params.date}`}
+        relvalInfo={`${params.que}_X_${params.date}`}
         controlList={controlList}
         onHeightChange={setNavigationHeight}
       />

@@ -243,7 +243,7 @@ const FloatingControlCard = ({ icon, title, text }) => (
     </div>
   </div>
 );
-const Navigation = ({ toLinks, flaworControl, archControl }) => {
+const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests = false, onToggleAllPullRequests }) => {
   const location = useLocation();
 
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -497,6 +497,41 @@ const Navigation = ({ toLinks, flaworControl, archControl }) => {
             </Nav>
 
             <div className="d-flex align-items-center gap-2 ms-lg-2">
+              <Button
+                size="sm"
+                onClick={onToggleAllPullRequests}
+                className="icon-btn"
+                title={showAllPullRequests ? "Hide PRs for all releases" : "Show PRs for all releases"}
+                aria-label={showAllPullRequests ? "Hide PRs for all releases" : "Show PRs for all releases"}
+                style={{
+                  width: 38,
+                  height: 38,
+                  background: showAllPullRequests ? "#2563eb" : "transparent",
+                  color: "#ffffff",
+                  borderColor: showAllPullRequests ? "#2563eb" : NAV_THEME.iconBtnBorder,
+                  position: "relative"
+                }}
+                variant="outline-secondary"
+              >
+                <GoGitPullRequest size={18} />
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 2,
+                    right: 2,
+                    width: 14,
+                    height: 14,
+                    borderRadius: "50%",
+                    background: showAllPullRequests ? "#ef4444" : "#22c55e",
+                    color: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
+                  {showAllPullRequests ? <FaMinus size={7} /> : <FaPlus size={7} />}
+                </span>
+              </Button>
               <Button
                 size="sm"
                 onClick={toggleFilters}
