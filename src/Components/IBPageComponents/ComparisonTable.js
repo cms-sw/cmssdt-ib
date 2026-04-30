@@ -863,7 +863,6 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        minWidth: '110px',
                         fontSize: '0.82rem',
                         fontWeight: 800,
                         margin: '0 auto',
