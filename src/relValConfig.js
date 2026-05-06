@@ -1,5 +1,4 @@
 import * as React from "react";
-import { v4 as uuidv4 } from 'uuid';
 
 export const LABEL_COLOR = {
     PASSED_COLOR: 'rgb(92, 184, 92)',
@@ -85,7 +84,7 @@ const _legendConf = [
 export const legend = [_legendConf.map(i => {
     let renderedGlyphicon = i.glyphicon ? (<span className={"glyphicon " + i.glyphicon}/> ): null;
     return (
-        <p key={uuidv4()}>
+        <p key={`${i.code}-${i.text}`}>
             <span style={{backgroundColor: i.color}} className="label">{i.code} {renderedGlyphicon}</span> {i.text} 
         </p>
     )

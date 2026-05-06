@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { config, STATUS_ENUM } from "../../config";
-import { v4 as uuidv4 } from "uuid";
 import { Dropdown } from "react-bootstrap";
 import {
   FaTag,
@@ -150,7 +149,7 @@ class StatusLabels extends Component {
     if (url) {
       return (
         <a
-          key={uuidv4()}
+          key={`label-${name}-${url || "no-url"}`}
           href={url}
           className="me-1"
           style={{ ...style, ...hoverStyle }}
@@ -164,7 +163,7 @@ class StatusLabels extends Component {
     }
 
     return (
-      <span key={uuidv4()} className="me-1" style={style} title={tooltip}>
+      <span key={`label-${name}-${tooltip || "no-tooltip"}`} className="me-1" style={style} title={tooltip}>
         {content}
       </span>
     );
@@ -353,7 +352,7 @@ class StatusLabels extends Component {
 
             return (
               <Dropdown.Item
-                key={`${title}-${item.name}-${uuidv4()}`}
+                key={`${title}-${item.name}-${item.url || item.tooltip || "item"}`}
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -421,11 +420,11 @@ class StatusLabels extends Component {
       const colors = COLOR_SCHEME[configObj.variant] || COLOR_SCHEME.secondary;
 
       return (
-        <Dropdown key={uuidv4()} className="d-inline-block me-1">
+        <Dropdown key={`ib-tag-${ibGroupType}`} className="d-inline-block me-1">
           <Dropdown.Toggle
             variant="light"
             size="sm"
-            id={`dropdown-${ibGroupType}-${uuidv4()}`}
+            id={`dropdown-${ibGroupType}`}
             title={configObj.tooltip}
             style={{
               backgroundColor: colors.bg,
@@ -447,7 +446,7 @@ class StatusLabels extends Component {
               const displayName = getDisplayName(ib.release_queue) || tag;
               return (
                 <Dropdown.Item
-                  key={uuidv4()}
+                  key={`ib-${tag}`}
                   href={configObj.url + tag}
                   target="_blank"
                   rel="noopener noreferrer"
