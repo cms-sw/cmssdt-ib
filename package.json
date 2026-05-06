@@ -2,72 +2,37 @@
   "name": "cmssw-dashboard",
   "version": "1.0.0",
   "private": true,
-  "homepage": ".",
   "dependencies": {
+    "@tanstack/react-table": "^8.21.3",
     "axios": "^1.6.0",
     "axios-cache-plugin": "^0.1.0",
     "bootstrap": "^5.3.3",
-    "query-string": "^8.1.0",
-    "react": "^18.3.1",
+    "query-string": "^9.3.1",
+    "react": "^19.2.5",
     "react-bootstrap": "^2.10.10",
     "react-copy-to-clipboard": "^5.1.0",
-    "react-dom": "^18.3.1",
+    "react-dom": "^19.2.5",
     "react-icons": "^5.5.0",
     "react-router-bootstrap": "^0.26.3",
     "react-router-dom": "^6.22.3",
-    "react-scripts": "5.0.1",
-    "react-table": "^7.8.0",
-    "underscore": "^1.13.7",
-    "uuid": "^9.0.1"
+    "underscore": "^1.13.7"
   },
   "overrides": {
     "underscore": "$underscore",
     "nth-check": "^2.0.1",
     "@tootallnate/once": "^3.0.1"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "engines": {
-    "node": ">=18 <19",
-    "npm": ">=8 <10"
-  },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test --env=jsdom",
-    "eject": "react-scripts eject"
-  },
-  "_comment": "Can not configure jest unless project is 'ejected'. Witthout this configuration JEST test will fail since some node modules are not corectly transpiled",
-  "_comment_code": {
-    "jest": {
-      "verbose": true,
-      "transform": {
-        "^.+\\.jsx$": "babel-jest",
-        "^.+\\.js$": "babel-jest"
-      },
-      "moduleFileExtensions": [
-        "js",
-        "jsx"
-      ],
-      "moduleDirectories": [
-        "node_modules"
-      ],
-      "transformIgnorePatterns": [
-        "node_modules/(?!iggy-common)"
-      ]
-    }
+    "node": ">=18",
+    "npm": ">=9"
   },
   "devDependencies": {
-    "http-proxy-middleware": "^3.0.5"
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^6.4.2"
   }
 }

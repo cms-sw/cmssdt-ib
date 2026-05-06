@@ -1,7 +1,6 @@
 import React, { Component } from 'react';
 import { Container, Row, Col, Card } from 'react-bootstrap';
 import { getDisplayName, getPreviousIbTag } from "../../Utils/processing";
-import { v4 as uuidv4 } from 'uuid';
 import _ from 'underscore';
 
 function isFromMergedCommit(pr) {

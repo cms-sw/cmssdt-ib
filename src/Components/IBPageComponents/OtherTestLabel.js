@@ -1,5 +1,4 @@
 import React from "react";
-import { v4 as uuidv4 } from "uuid";
 import { Dropdown, Badge } from "react-bootstrap";
 import { config } from "../../config";
 
@@ -9,12 +8,12 @@ const OtherRelvalsLabel = ({ otherTests, type_name, title }) => {
   if (!otherTests || Object.keys(otherTests).length === 0) return null;
 
   const anyFailure = Object.values(otherTests).some(
-    t => t.details && t.details.num_failed > 0
+    (t) => t.details && t.details.num_failed > 0
   );
 
   return (
     <>
-      <Dropdown key={uuidv4()} size="sm">
+      <Dropdown size="sm">
         <Dropdown.Toggle
           variant={anyFailure ? "danger" : "secondary"}
           id={`${type_name}-test-toggle`}
@@ -55,7 +54,10 @@ const OtherRelvalsLabel = ({ otherTests, type_name, title }) => {
             );
 
             return (
-              <Dropdown.Item key={uuidv4()} href={url}>
+              <Dropdown.Item
+                key={`${key}-${item.release_name}-${item.arch}-${item.other}`}
+                href={url}
+              >
                 <div
                   style={{
                     display: "flex",

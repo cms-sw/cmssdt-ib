@@ -9,7 +9,6 @@ import {
   valueInTheList
 } from '../../Utils/processing';
 import _ from 'underscore';
-import { v4 as uuidv4 } from 'uuid';
 import { config, showLabelConfig } from '../../config';
 import { useShowArch } from "../../context/ShowArchContext";
 import {
@@ -22,8 +21,6 @@ import {
   FaPlay,
   FaCodeBranch,
   FaTag,
-  FaExternalLinkAlt,
-  FaBug,
   FaWrench,
   FaTools,
   FaVial,
@@ -141,31 +138,26 @@ const statusStyles = {
     sphereStyle: sphereStyles.sphereSuccess,
     sphereIcon: <FaCheck size={12} />,
     description: 'All tests passed successfully',
-    action: 'Click to view details',
   },
   danger: {
     sphereStyle: sphereStyles.sphereDanger,
     sphereIcon: <FaTimes size={12} />,
     description: 'Build or tests failed',
-    action: 'Click to view error logs',
   },
   warning: {
     sphereStyle: sphereStyles.sphereWarning,
     sphereIcon: <FaExclamationTriangle size={12} />,
     description: 'Warnings detected',
-    action: 'Click to review warnings',
   },
   secondary: {
     sphereStyle: sphereStyles.sphereSecondary,
     sphereIcon: <FaQuestionCircle size={12} />,
     description: 'Status unknown',
-    action: 'No additional information',
   },
   info: {
     sphereStyle: sphereStyles.sphereInfo,
     sphereIcon: <FaPlay size={12} />,
     description: 'Tests in progress',
-    action: 'Check back later',
   }
 };
 
@@ -193,6 +185,10 @@ const removeKeysFromDetails = (details, keysToRemove = []) => {
 };
 
 const formatFlavorLabel = (value) => getDisplayName(value).replace(/_X$/, '');
+
+function makeSafeId(value) {
+  return String(value || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '-');
+}
 
 function renderStickyRowLabel(typeKey, color = THEME.text.primary) {
   const cfg = rowLabelConfig[typeKey];
@@ -246,12 +242,6 @@ const ArchTooltip = ({ cmsdistTag, isPatch, baseTag }) => (
         </div>
       </div>
     )}
-    {/*disabled the footer-can be used in future*/}
-    {/* <div className="d-flex justify-content-end mt-3 pt-2 border-top">
-      <small className="text-primary d-flex align-items-center fw-semibold">
-        Click to view commits <FaExternalLinkAlt className="ms-1" size={10} />
-      </small>
-    </div> */}
   </div>
 );
 
@@ -269,9 +259,6 @@ const StatusTooltip = ({ status, value, details, type }) => {
     }
     return String(val);
   };
-const hasNumericValue =
-    typeof value === 'number' ||
-    (typeof value === 'string' && /\d/.test(value));
 
   return (
     <div className="text-start p-3" style={{ minWidth: '250px' }}>
@@ -306,7 +293,6 @@ const hasNumericValue =
       {details && Object.keys(details).length > 0 && (
         <div className="mb-2">
           <div className="d-flex align-items-center mb-1">
-            <FaBug className="text-secondary me-2" size={12} />
             <span className="text-muted small fw-semibold">Details:</span>
           </div>
           <div className="bg-light p-2 rounded small">
@@ -324,39 +310,15 @@ const hasNumericValue =
           </div>
         </div>
       )}
-        {/* Disabled the footer.May be used to show something in future */}
-        {/* <div className="d-flex justify-content-end mt-2 pt-2 border-top">
-          <small className="text-muted d-flex align-items-center">
-
-            <div
-              style={{
-                ...sphereStyles.sphere,
-                ...style.sphereStyle,
-                width: '30px',
-                height: '30px',
-                fontSize: '12px',
-                marginRight: '6px',
-                minWidth: '18px',
-                padding: '0 4px',
-                borderRadius: '10px'
-              }}
-            >
-              {hasNumericValue ? value : style.sphereIcon}
-            </div>
-
-            {style.action}
-          </small>
-        </div> */}
     </div>
   );
 };
 
-function renderTooltip(cellContent, tooltipContent) {
+function renderTooltip(cellContent, tooltipContent, tooltipId = 'tooltip-status') {
   return (
     <OverlayTrigger
-      key={uuidv4()}
       placement="top"
-      overlay={<Tooltip id={uuidv4()} className="custom-tooltip p-0">{tooltipContent}</Tooltip>}
+      overlay={<Tooltip id={tooltipId} className="custom-tooltip p-0">{tooltipContent}</Tooltip>}
       delay={tooltipDelayInMs}
     >
       <span className="d-inline-block">{cellContent}</span>
@@ -364,15 +326,15 @@ function renderTooltip(cellContent, tooltipContent) {
   );
 }
 
-function renderCell(cellInfo) {
+function renderCell(cellInfo, key) {
   return (
-    <td key={uuidv4()} className="align-middle p-1" style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+    <td key={key} className="align-middle p-1" style={{ textAlign: 'center', verticalAlign: 'middle' }}>
       {cellInfo}
     </td>
   );
 }
 
-function renderSphere({ status = "secondary", value, icon, link, tooltipContent, details, type } = {}) {
+function renderSphere({ status = "secondary", value, icon, link, tooltipContent, details, type, tooltipId } = {}) {
   const style = statusStyles[status] || statusStyles.secondary;
   const displayValue = value !== undefined ? value : '';
 
@@ -427,7 +389,11 @@ function renderSphere({ status = "secondary", value, icon, link, tooltipContent,
     </a>
   ) : sphereContent;
 
-  return renderTooltip(wrappedContent, enhancedTooltip);
+  return renderTooltip(
+    wrappedContent,
+    enhancedTooltip,
+    tooltipId || `tooltip-${makeSafeId(type)}-${makeSafeId(displayValue)}`
+  );
 }
 
 const getBuildOrUnitUrl = ({ file, arch, ibName, urlParameter = '' }) => {
@@ -485,12 +451,12 @@ const copyText = (text) => {
 const ComparisonTable = ({ data = [], releaseQue }) => {
   const [copiedText, setCopiedText] = useState(null);
   const { getActiveArchsForQue = () => [], getColorsSchemeForQue = () => ({}) } = useShowArch();
+
   const handleCopy = (e, text) => {
     e.preventDefault();
     e.stopPropagation();
 
     copyText(text);
-
     setCopiedText(text);
 
     setTimeout(() => {
@@ -517,9 +483,12 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
   const renderRowCells = ({ resultType, ifWarning, ifError, ifFailed, ifPassed, ifUnknown }) => {
     return data.map((ib, pos) => {
       const el = archsByIb[pos];
+
       return (el?.archs || []).map((arch) => {
+        const cellKey = `${resultType}-${pos}-${arch}`;
         const results = _.findWhere(ib[resultType] || [], { arch });
-        if (!results) return renderCell(<span className="text-muted">—</span>);
+
+        if (!results) return renderCell(<span className="text-muted">—</span>, `${cellKey}-missing`);
 
         if (_.isEmpty(results)) {
           return renderCell(
@@ -528,8 +497,10 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
               icon: <FaQuestionCircle />,
               value: '?',
               type: resultType,
-              details: { status: 'No data available' }
-            }) || <span className="text-muted">—</span>
+              details: { status: 'No data available' },
+              tooltipId: `${cellKey}-tooltip-empty`
+            }) || <span className="text-muted">—</span>,
+            `${cellKey}-empty`
           );
         }
 
@@ -537,72 +508,82 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
           case true:
           case "passed":
             return ifPassed
-              ? ifPassed(results, ib.release_name)
+              ? ifPassed(results, ib.release_name, cellKey)
               : renderCell(
                   renderSphere({
                     status: 'success',
                     icon: <FaCheck />,
                     value: results.details?.num_passed || '✓',
                     type: resultType,
-                    details: results.details
-                  }) || <span className="text-muted">—</span>
+                    details: results.details,
+                    tooltipId: `${cellKey}-tooltip-passed`
+                  }) || <span className="text-muted">—</span>,
+                  `${cellKey}-passed`
                 );
 
           case false:
           case "error":
             return ifError
-              ? ifError(results, ib.release_name)
+              ? ifError(results, ib.release_name, cellKey)
               : renderCell(
                   renderSphere({
                     status: 'danger',
                     icon: <FaTimes />,
                     value: results.details?.num_errors || '✗',
                     type: resultType,
-                    details: results.details
-                  }) || <span className="text-muted">—</span>
+                    details: results.details,
+                    tooltipId: `${cellKey}-tooltip-error`
+                  }) || <span className="text-muted">—</span>,
+                  `${cellKey}-error`
                 );
 
           case "failed":
             return ifFailed
-              ? ifFailed(results, ib.release_name)
+              ? ifFailed(results, ib.release_name, cellKey)
               : renderCell(
                   renderSphere({
                     status: 'danger',
                     icon: <FaTimes />,
                     value: results.details?.num_fails || '!',
                     type: resultType,
-                    details: results.details
-                  }) || <span className="text-muted">—</span>
+                    details: results.details,
+                    tooltipId: `${cellKey}-tooltip-failed`
+                  }) || <span className="text-muted">—</span>,
+                  `${cellKey}-failed`
                 );
 
           case "warning":
             return ifWarning
-              ? ifWarning(results, ib.release_name)
+              ? ifWarning(results, ib.release_name, cellKey)
               : renderCell(
                   renderSphere({
                     status: 'warning',
                     icon: null,
                     value: results.details?.num_warnings || '⚠',
                     type: resultType,
-                    details: results.details
-                  }) || <span className="text-muted">—</span>
+                    details: results.details,
+                    tooltipId: `${cellKey}-tooltip-warning`
+                  }) || <span className="text-muted">—</span>,
+                  `${cellKey}-warning`
                 );
 
           case "unknown":
             return ifUnknown
-              ? ifUnknown(arch, ib)
+              ? ifUnknown(arch, ib, cellKey)
               : renderCell(
                   renderSphere({
                     status: 'secondary',
                     icon: <FaQuestionCircle />,
                     value: ' ',
                     type: resultType,
-                    details: { status: 'Unknown' }
-                  }) || <span className="text-muted">—</span>
+                    details: { status: 'Unknown' },
+                    tooltipId: `${cellKey}-tooltip-unknown`
+                  }) || <span className="text-muted">—</span>,
+                  `${cellKey}-unknown`
                 );
 
           default:
-            return renderCell(<span className="text-muted">—</span>);
+            return renderCell(<span className="text-muted">—</span>, `${cellKey}-default`);
         }
       });
     });
@@ -613,9 +594,9 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
     getUrl,
     urlParameter = '',
     tooltipOptions = {}
-  ) => (result, ib) => {
+  ) => (result, ib, cellKey = `${result?.arch || 'arch'}-${ib || 'ib'}`) => {
     const { details, done } = result;
-    if (!details) return renderCell(<span className="text-muted">—</span>);
+    if (!details) return renderCell(<span className="text-muted">—</span>, `${cellKey}-no-details`);
 
     const resultKeys = Object.keys(details);
     let labelConfig = { value: 0, colorType: 'secondary' };
@@ -636,7 +617,7 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
       }
     }
 
-    if (labelConfig.value === 0) return renderCell(<span className="text-muted">—</span>);
+    if (labelConfig.value === 0) return renderCell(<span className="text-muted">—</span>, `${cellKey}-zero`);
     if (done === false) labelConfig.value = `${labelConfig.value}*`;
 
     const status = labelConfig.colorType === 'danger'
@@ -660,20 +641,21 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
       value: labelConfig.value,
       details: tooltipDetails,
       type: resultType,
-      link: getUrl({ file: result.file, arch: result.arch, ibName: ib, urlParameter })
+      link: getUrl({ file: result.file, arch: result.arch, ibName: ib, urlParameter }),
+      tooltipId: `${cellKey}-tooltip-general`
     });
 
-    return renderCell(cell || <span className="text-muted">—</span>);
+    return renderCell(cell || <span className="text-muted">—</span>, `${cellKey}-general`);
   };
 
-  const showRelValsResults = (labelConfigArray = [], getUrl) => (result, ib) => {
+  const showRelValsResults = (labelConfigArray = [], getUrl) => (result, ib, cellKey = `${result?.arch || 'arch'}-${ib || 'ib'}`) => {
     const { details, done } = result;
     const labelConfig = checkLabelType(labelConfigArray, details) || {
       value: 0,
       colorType: "secondary"
     };
 
-    if (labelConfig.value === 0) return renderCell(<span className="text-muted">—</span>);
+    if (labelConfig.value === 0) return renderCell(<span className="text-muted">—</span>, `${cellKey}-zero`);
     if (done === false) labelConfig.value += '*';
 
     let selectedStatus = '';
@@ -705,10 +687,11 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
       value: labelConfig.value,
       details,
       type: 'RelVal',
-      link: getUrl({ file: result.file, arch: result.arch, ibName: ib, selectedStatus })
+      link: getUrl({ file: result.file, arch: result.arch, ibName: ib, selectedStatus }),
+      tooltipId: `${cellKey}-tooltip-relval`
     });
 
-    return renderCell(cell || <span className="text-muted">—</span>);
+    return renderCell(cell || <span className="text-muted">—</span>, `${cellKey}-relval`);
   };
 
   const shouldShowRow = (resultType) => {
@@ -799,6 +782,7 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                 padding: 0;
                 opacity: 1 !important;
               }
+
               .custom-tooltip {
                 opacity: 1 !important;
               }
@@ -898,9 +882,7 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                     <span className="type-header-desktop fw-bold text-uppercase" style={{ fontSize: '0.8rem' }}>
                       Type
                     </span>
-                    <span className="type-header-mobile fw-bold text-uppercase" style={{ fontSize: '0.7rem' }}>
-                      
-                    </span>
+                    <span className="type-header-mobile fw-bold text-uppercase" style={{ fontSize: '0.7rem' }} />
                   </div>
                 </th>
 
@@ -908,11 +890,7 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                   if (!item.archs?.length) return null;
 
                   const flavorLabel = formatFlavorLabel(item.flavor);
-
-                  const releaseNameToCopy =
-                    item.current_tag ||
-                    data[pos]?.release_name ||
-                    '';
+                  const releaseNameToCopy = item.current_tag || data[pos]?.release_name || '';
 
                   const flavorLink = releaseNameToCopy
                     ? `https://github.com/cms-sw/cmssw/tree/${releaseNameToCopy}`
@@ -934,7 +912,7 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
 
                   return (
                     <th
-                      key={uuidv4()}
+                      key={`flavor-${pos}-${item.flavor}`}
                       colSpan={item.archs.length}
                       style={{
                         textAlign: 'center',
@@ -969,11 +947,7 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                             aria-label={copiedText === releaseNameToCopy ? 'Copied!' : `Copy ${releaseNameToCopy}`}
                             onClick={(e) => handleCopy(e, releaseNameToCopy)}
                           >
-                            {copiedText === releaseNameToCopy ? (
-                              <FaCheck size={11} />
-                            ) : (
-                              <FaCopy size={11} />
-                            )}
+                            {copiedText === releaseNameToCopy ? <FaCheck size={11} /> : <FaCopy size={11} />}
                           </button>
                         )}
                       </div>
@@ -983,7 +957,7 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
               </tr>
 
               <tr>
-                {archsByIb.map((item) => (item.archs || []).map((arch) => {
+                {archsByIb.map((item, pos) => (item.archs || []).map((arch) => {
                   let link = null;
                   let isPatch = false;
                   let baseTag = '';
@@ -1016,7 +990,7 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                         const isFirstRow = idx === 0;
 
                         return (
-                          <div key={idx} className="arch-stack-item" style={{ backgroundColor }}>
+                          <div key={`${arch}-${str}-${idx}`} className="arch-stack-item" style={{ backgroundColor }}>
                             <strong
                               style={{
                                 display: 'inline-flex',
@@ -1033,29 +1007,27 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                     </div>
                   );
 
-                  const cellInner = <>{archStack}</>;
-
                   const cellContent = link ? (
                     <OverlayTrigger
                       placement="top"
                       overlay={
-                        <Tooltip id={uuidv4()} className="custom-tooltip">
+                        <Tooltip id={`arch-tooltip-${pos}-${makeSafeId(arch)}`} className="custom-tooltip">
                           <ArchTooltip cmsdistTag={cmsdistTag} isPatch={isPatch} baseTag={baseTag} />
                         </Tooltip>
                       }
                       delay={tooltipDelayInMs}
                     >
                       <a href={link} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
-                        {cellInner}
+                        {archStack}
                       </a>
                     </OverlayTrigger>
                   ) : (
-                    <div>{cellInner}</div>
+                    <div>{archStack}</div>
                   );
 
                   return (
                     <th
-                      key={uuidv4()}
+                      key={`arch-${pos}-${arch}`}
                       style={{
                         padding: '3px 2px',
                         backgroundColor: THEME.light,
@@ -1077,9 +1049,12 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                   </td>
                   {data.map((ib, pos) => {
                     const el = archsByIb[pos];
+
                     return (el?.archs || []).map((arch) => {
+                      const cellKey = `builds-${pos}-${arch}`;
                       const results = _.findWhere(ib.builds || [], { arch });
-                      if (!results) return renderCell(<span className="text-muted">—</span>);
+
+                      if (!results) return renderCell(<span className="text-muted">—</span>, `${cellKey}-missing`);
 
                       if (_.isEmpty(results)) {
                         return renderCell(
@@ -1093,8 +1068,10 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                               file: results.file,
                               arch: results.arch,
                               ibName: ib.release_name
-                            })
-                          }) || <span className="text-muted">—</span>
+                            }),
+                            tooltipId: `${cellKey}-tooltip-empty`
+                          }) || <span className="text-muted">—</span>,
+                          `${cellKey}-empty`
                         );
                       }
 
@@ -1112,31 +1089,23 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                                 file: results.file,
                                 arch: results.arch,
                                 ibName: ib.release_name
-                              })
-                            })
+                              }),
+                              tooltipId: `${cellKey}-tooltip-passed`
+                            }),
+                            `${cellKey}-passed`
                           );
 
                         case false:
                         case "error":
-                          return showGeneralResults([
-                            { groupFields: [(key) => key.includes("Error")], color: "danger" },
-                            { groupFields: ["compWarning"], color: "warning" }
-                          ], getBuildOrUnitUrl)(results, ib.release_name);
-
                         case "failed":
-                          return showGeneralResults([
-                            { groupFields: [(key) => key.includes("Error")], color: "danger" },
-                            { groupFields: ["compWarning"], color: "warning" }
-                          ], getBuildOrUnitUrl)(results, ib.release_name);
-
                         case "warning":
                           return showGeneralResults([
                             { groupFields: [(key) => key.includes("Error")], color: "danger" },
                             { groupFields: ["compWarning"], color: "warning" }
-                          ], getBuildOrUnitUrl)(results, ib.release_name);
+                          ], getBuildOrUnitUrl)(results, ib.release_name, cellKey);
 
                         default:
-                          return renderCell(<span className="text-muted">—</span>);
+                          return renderCell(<span className="text-muted">—</span>, `${cellKey}-default`);
                       }
                     });
                   })}
@@ -1150,7 +1119,7 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                   </td>
                   {renderRowCells({
                     resultType: 'utests',
-                    ifPassed: (details, ibName) => renderCell(renderSphere({
+                    ifPassed: (details, ibName, cellKey) => renderCell(renderSphere({
                       status: 'success',
                       icon: <FaCheck />,
                       value: details.details?.num_passed || ' ',
@@ -1161,8 +1130,9 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                         arch: details.arch,
                         ibName,
                         urlParameter: '?utests'
-                      })
-                    })),
+                      }),
+                      tooltipId: `${cellKey}-tooltip-passed`
+                    }), `${cellKey}-passed`),
                     ifError: showGeneralResults([{ groupFields: ["num_errors"], color: "danger" }], getBuildOrUnitUrl, '?utests'),
                     ifFailed: showGeneralResults([{ groupFields: ["num_fails"], color: "danger" }], getBuildOrUnitUrl, '?utests'),
                     ifWarning: showGeneralResults([{ groupFields: ["num_warnings"], color: "warning" }], getBuildOrUnitUrl, '?utests')
@@ -1202,22 +1172,24 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                   </td>
                   {renderRowCells({
                     resultType: 'addons',
-                    ifPassed: (details, ibName) => renderCell(renderSphere({
+                    ifPassed: (details, ibName, cellKey) => renderCell(renderSphere({
                       status: 'success',
                       icon: <FaCheck />,
                       value: ' ',
                       type: 'Other Tests',
                       details: removeKeysFromDetails(details, ['file']),
-                      link: getOtherTestUrl({ file: details.file, arch: details.arch, ibName })
-                    })),
-                    ifError: (details, ibName) => renderCell(renderSphere({
+                      link: getOtherTestUrl({ file: details.file, arch: details.arch, ibName }),
+                      tooltipId: `${cellKey}-tooltip-passed`
+                    }), `${cellKey}-passed`),
+                    ifError: (details, ibName, cellKey) => renderCell(renderSphere({
                       status: 'danger',
                       icon: <FaTimes />,
                       value: ' ',
                       type: 'Other Tests',
                       details: removeKeysFromDetails(details, ['file']),
-                      link: getOtherTestUrl({ file: details.file, arch: details.arch, ibName })
-                    })),
+                      link: getOtherTestUrl({ file: details.file, arch: details.arch, ibName }),
+                      tooltipId: `${cellKey}-tooltip-error`
+                    }), `${cellKey}-error`),
                     ifFailed: showGeneralResults(showLabelConfig.addons || [], getOtherTestUrl, '', { hideFile: true }),
                     ifWarning: showGeneralResults(showLabelConfig.addons || [], getOtherTestUrl, '', { hideFile: true })
                   })}
@@ -1231,22 +1203,24 @@ const ComparisonTable = ({ data = [], releaseQue }) => {
                   </td>
                   {renderRowCells({
                     resultType: 'dupDict',
-                    ifPassed: (details, ibName) => renderCell(renderSphere({
+                    ifPassed: (details, ibName, cellKey) => renderCell(renderSphere({
                       status: 'success',
                       icon: <FaCheck />,
                       value: ' ',
                       type: 'Q/A',
                       details: { status: 'No duplicates found' },
-                      link: urls.q_a(details.arch, ibName)
-                    })),
-                    ifError: (details, ibName) => renderCell(renderSphere({
+                      link: urls.q_a(details.arch, ibName),
+                      tooltipId: `${cellKey}-tooltip-passed`
+                    }), `${cellKey}-passed`),
+                    ifError: (details, ibName, cellKey) => renderCell(renderSphere({
                       status: 'danger',
                       icon: <FaTimes />,
                       value: ' ',
                       type: 'Q/A',
                       details: { status: 'Duplicate found' },
-                      link: urls.q_a(details.arch, ibName)
-                    })),
+                      link: urls.q_a(details.arch, ibName),
+                      tooltipId: `${cellKey}-tooltip-error`
+                    }), `${cellKey}-error`),
                     ifFailed: showGeneralResults(showLabelConfig.dupDict || [], urls.q_a),
                     ifWarning: showGeneralResults(showLabelConfig.dupDict || [], urls.q_a)
                   })}

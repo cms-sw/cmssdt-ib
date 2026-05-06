@@ -1,8 +1,14 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { useTable, useExpanded, useFilters, usePagination } from "react-table";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getExpandedRowModel,
+  flexRender,
+} from "@tanstack/react-table";
 import { Modal, Button, OverlayTrigger, Popover } from "react-bootstrap";
 import { CopyToClipboard } from "react-copy-to-clipboard";
-import { v4 as uuidv4 } from "uuid";
 import PropTypes from "prop-types";
 import { FaEye } from "react-icons/fa";
 
@@ -22,9 +28,6 @@ import {
 
 const { urls } = config;
 
-/* =========================================================
-   UI size knobs
-   ========================================================= */
 const UI_SIZES = {
   tableFont: "0.88rem",
   headerFont: "0.92rem",
@@ -37,9 +40,6 @@ const UI_SIZES = {
   workflowFont: "0.88rem",
 };
 
-/* =========================================================
-   Shared styles
-   ========================================================= */
 const styles = {
   stickyTableHeader: {
     position: "sticky",
@@ -56,9 +56,6 @@ const styles = {
   },
 };
 
-/* ------------------------------------------------------------------ */
-/* Helper functions */
-/* ------------------------------------------------------------------ */
 const getLogAddress = (arch, ib, step, workflowName, workflowID, wasDASErr, typeKey, nameKey) => {
   const filename = wasDASErr ? "step1_dasquery.log" : `step${step}_${workflowName}.log`;
   return urls.relValLog(arch, ib, workflowID, workflowName, filename, typeKey, nameKey);
@@ -68,14 +65,11 @@ const getLabelName = (name) => LABELS_TEXT[name] || name;
 const getIb = (date, que, flavor) => `${que}_${flavor}_${date}`;
 const getReleaseQue = (ibQue) => `${ibQue}_X`;
 
-/* ------------------------------------------------------------------ */
-/* Reusable text filter */
-/* ------------------------------------------------------------------ */
-const ColumnTextFilter = ({ column: { filterValue, setFilter, placeholder = "Filter..." } }) => {
+const ColumnTextFilter = ({ column, placeholder = "Filter..." }) => {
   return (
     <input
-      value={filterValue || ""}
-      onChange={(e) => setFilter(e.target.value || undefined)}
+      value={column.getFilterValue() || ""}
+      onChange={(e) => column.setFilterValue(e.target.value || undefined)}
       placeholder={placeholder}
       style={{
         width: "100%",
@@ -90,9 +84,6 @@ const ColumnTextFilter = ({ column: { filterValue, setFilter, placeholder = "Fil
   );
 };
 
-/* ------------------------------------------------------------------ */
-/* Status Badge Component */
-/* ------------------------------------------------------------------ */
 const StatusBadge = ({ text, color, onClick, glyphicon }) => {
   const style = {
     backgroundColor: color,
@@ -125,15 +116,16 @@ const StatusBadge = ({ text, color, onClick, glyphicon }) => {
         e.currentTarget.style.boxShadow = "none";
       }}
     >
-      {glyphicon && <span style={{ marginRight: "4px", display: "inline-flex", alignItems: "center" }}>{glyphicon}</span>}
+      {glyphicon && (
+        <span style={{ marginRight: "4px", display: "inline-flex", alignItems: "center" }}>
+          {glyphicon}
+        </span>
+      )}
       {text}
     </span>
   );
 };
 
-/* ------------------------------------------------------------------ */
-/* Architecture Stack Component */
-/* ------------------------------------------------------------------ */
 const ArchStack = ({ arch, colorScheme }) => {
   const archParts = arch.split("_");
 
@@ -150,7 +142,7 @@ const ArchStack = ({ arch, colorScheme }) => {
     >
       {archParts.map((part, idx) => (
         <div
-          key={idx}
+          key={`${arch}-${part}-${idx}`}
           style={{
             padding: `${UI_SIZES.archPaddingY}px ${UI_SIZES.archPaddingX}px`,
             backgroundColor: colorScheme[part] || "#6c757d",
@@ -169,9 +161,6 @@ const ArchStack = ({ arch, colorScheme }) => {
   );
 };
 
-/* ------------------------------------------------------------------ */
-/* Step Cell Component */
-/* ------------------------------------------------------------------ */
 const StepCell = ({
   stepNumber,
   status,
@@ -214,9 +203,6 @@ const StepCell = ({
   );
 };
 
-/* ------------------------------------------------------------------ */
-/* Pagination Component */
-/* ------------------------------------------------------------------ */
 const buttonStyle = {
   margin: "0 2px",
   padding: "6px 10px",
@@ -302,9 +288,7 @@ const Pagination = ({
             onChange={(e) => setPageInput(e.target.value)}
             onBlur={commitPageInput}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                commitPageInput();
-              }
+              if (e.key === "Enter") commitPageInput();
             }}
             style={{ width: "70px", padding: "4px 8px", borderRadius: 6, border: "1px solid #ddd" }}
           />
@@ -326,9 +310,13 @@ const Pagination = ({
   );
 };
 
-/* ------------------------------------------------------------------ */
-/* Main Component */
-/* ------------------------------------------------------------------ */
+const textFilter = (row, columnId, filterValue) => {
+  const rowValue = row.getValue(columnId);
+  return rowValue !== undefined && rowValue !== null
+    ? String(rowValue).toLowerCase().includes(String(filterValue).toLowerCase())
+    : true;
+};
+
 const ResultTableWithSteps = ({
   filteredRelVals = [],
   selectedArchs = [],
@@ -340,15 +328,18 @@ const ResultTableWithSteps = ({
   ibDate = "",
   ibQue = "",
   style = {},
-  allGPUs = [],
-  allArchs = [],
-  allOthers = [],
-  allFlavors = [],
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
   const [modalCommands, setModalCommands] = useState([]);
   const [copied, setCopied] = useState(false);
+
+  const [expanded, setExpanded] = useState({});
+  const [columnFilters, setColumnFilters] = useState([]);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 100,
+  });
 
   const { getColorsSchemeForQue } = useShowArch();
   const archColorScheme = getColorsSchemeForQue(getReleaseQue(ibQue));
@@ -387,12 +378,12 @@ const ResultTableWithSteps = ({
     const cols = [
       {
         id: "expander",
-        Header: "",
-        width: 36,
-        disableFilters: true,
-        Cell: ({ row }) => (
+        header: "",
+        enableColumnFilter: false,
+        size: 36,
+        cell: ({ row }) => (
           <span
-            {...row.getToggleRowExpandedProps()}
+            onClick={row.getToggleExpandedHandler()}
             style={{
               cursor: "pointer",
               display: "inline-block",
@@ -403,31 +394,39 @@ const ResultTableWithSteps = ({
               userSelect: "none",
             }}
           >
-            {row.isExpanded ? "▼" : "▶"}
+            {row.getIsExpanded() ? "▼" : "▶"}
           </span>
         ),
       },
       {
-        Header: "#",
-        accessor: (row, i) => i + 1,
+        header: "#",
+        accessorFn: (_row, i) => i + 1,
         id: "index",
-        width: 52,
-        disableFilters: true,
-        Cell: ({ value }) => <b style={{ fontSize: UI_SIZES.workflowFont }}>{value}</b>,
+        enableColumnFilter: false,
+        size: 52,
+        cell: ({ getValue }) => <b style={{ fontSize: UI_SIZES.workflowFont }}>{getValue()}</b>,
       },
       {
-        Header: "Workflow #",
-        accessor: "id",
-        width: 110,
-        filter: "text",
-        disableFilters: !doFilterColumn,
-        Filter: (props) =>
-          doFilterColumn ? <ColumnTextFilter {...props} placeholder="Search workflow..." /> : null,
-        Cell: ({ value, row }) => (
-          <OverlayTrigger placement="top" overlay={<Popover id={`popover-${value}`}>{row.original.cmdName}</Popover>}>
-            <b style={{ cursor: "help", fontSize: UI_SIZES.workflowFont }}>{value}</b>
-          </OverlayTrigger>
-        ),
+        header: "Workflow #",
+        accessorKey: "id",
+        id: "id",
+        size: 110,
+        filterFn: textFilter,
+        enableColumnFilter: doFilterColumn,
+        meta: {
+          filterPlaceholder: "Search workflow...",
+        },
+        cell: ({ getValue, row }) => {
+          const value = getValue();
+          return (
+            <OverlayTrigger
+              placement="top"
+              overlay={<Popover id={`popover-${value}`}>{row.original.cmdName}</Popover>}
+            >
+              <b style={{ cursor: "help", fontSize: UI_SIZES.workflowFont }}>{value}</b>
+            </OverlayTrigger>
+          );
+        },
       },
     ];
 
@@ -472,7 +471,8 @@ const ResultTableWithSteps = ({
             }
 
             cols.push({
-              Header: () => (
+              id: `${flavorKey}-${archKey}-${typeKey}-${nameKey}`,
+              header: () => (
                 <div style={{ minWidth: "150px" }}>
                   <div
                     style={{
@@ -522,8 +522,7 @@ const ResultTableWithSteps = ({
                   </div>
                 </div>
               ),
-              id: `${flavorKey}-${archKey}-${typeKey}-${nameKey}`,
-              accessor: (row) => {
+              accessorFn: (row) => {
                 const data = nameData[row.id];
                 if (!data) return null;
 
@@ -536,29 +535,32 @@ const ResultTableWithSteps = ({
                 if (status === RELVAL_STATUS_ENUM.DAS_ERROR) return getLabelName(status);
                 if (status === RELVAL_STATUS_ENUM.NOTRUN) return getLabelName(status);
                 if (status === RELVAL_STATUS_ENUM.TIMEOUT) return getLabelName(status);
+
                 return null;
               },
-              filter: "text",
-              disableFilters: !doFilterColumn,
-              Filter: (props) =>
-                doFilterColumn ? <ColumnTextFilter {...props} placeholder="Filter column..." /> : null,
-              filterMethod: (rows, id, filterValue) => rows,
-              Cell: ({ row }) => {
+              filterFn: textFilter,
+              enableColumnFilter: doFilterColumn,
+              meta: {
+                filterPlaceholder: "Filter column...",
+              },
+              cell: ({ row }) => {
                 const data = nameData[row.original.id];
+
                 if (!data) {
                   return <div style={{ textAlign: "center", padding: "4px" }}>—</div>;
                 }
 
                 const ib = getIb(ibDate, ibQue, flavorKey);
                 const { steps } = data;
-                const stepsToShow = row.isExpanded ? steps : [steps[steps.length - 1]];
+                const isExpanded = row.getIsExpanded();
+                const stepsToShow = isExpanded ? steps : [steps[steps.length - 1]];
                 const knownFailed = isRelValKnownFailed(data);
                 const trackedForFailed = isRelValTrackedForFailed(data);
 
                 return (
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     {stepsToShow.map((step, idx) => {
-                      const stepNumber = steps.length - (row.isExpanded ? steps.length - idx - 1 : 0);
+                      const stepNumber = steps.length - (isExpanded ? steps.length - idx - 1 : 0);
                       const { status, errors = 0, warnings = 0 } = step;
 
                       let exitCodeText = null;
@@ -614,57 +616,34 @@ const ResultTableWithSteps = ({
     handleShow,
   ]);
 
-  const defaultColumn = useMemo(
-    () => ({
-      Filter: (props) =>
-        doFilterColumn ? <ColumnTextFilter {...props} placeholder="Filter..." /> : null,
-    }),
-    [doFilterColumn]
-  );
-
-  const {
-    getTableProps,
-    getTableBodyProps,
-    headerGroups,
-    prepareRow,
-    page,
-    canPreviousPage,
-    canNextPage,
-    pageOptions,
-    pageCount,
-    gotoPage,
-    nextPage,
-    previousPage,
-    setPageSize,
-    state: { pageIndex, pageSize },
-    visibleColumns,
-  } = useTable(
-    {
-      columns,
-      data: filteredRelVals,
-      defaultColumn,
-      initialState: {
-        expanded: {},
-        pageSize: 100,
-        pageIndex: 0,
-      },
-      autoResetExpanded: false,
-      autoResetFilters: false,
-      filterTypes: {
-        text: (rows, id, filterValue) => {
-          return rows.filter((row) => {
-            const rowValue = row.values[id];
-            return rowValue !== undefined
-              ? String(rowValue).toLowerCase().includes(String(filterValue).toLowerCase())
-              : true;
-          });
-        },
-      },
+  const table = useReactTable({
+    data: filteredRelVals,
+    columns,
+    state: {
+      expanded,
+      columnFilters,
+      pagination,
     },
-    useFilters,
-    useExpanded,
-    usePagination
-  );
+    onExpandedChange: setExpanded,
+    onColumnFiltersChange: setColumnFilters,
+    onPaginationChange: setPagination,
+    getRowCanExpand: () => true,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    autoResetExpanded: false,
+    autoResetPageIndex: false,
+  });
+
+  const page = table.getRowModel().rows;
+  const pageIndex = table.getState().pagination.pageIndex;
+  const pageSize = table.getState().pagination.pageSize;
+  const pageCount = table.getPageCount();
+  const pageOptions = Array.from({ length: pageCount }, (_, i) => i);
+  const canPreviousPage = table.getCanPreviousPage();
+  const canNextPage = table.getCanNextPage();
+  const visibleColumns = table.getVisibleLeafColumns();
 
   return (
     <>
@@ -672,21 +651,20 @@ const ResultTableWithSteps = ({
         <Modal.Header closeButton className="bg-light">
           <Modal.Title>{modalTitle}</Modal.Title>
         </Modal.Header>
+
         <Modal.Body>
           {modalCommands.length > 0 ? (
             modalCommands.map((cmd, index) => {
               if (!cmd || Object.keys(cmd).length === 0) {
                 return (
-                  <div key={uuidv4()} className="mb-4">
-                    <div
-                      className="d-flex align-items-center justify-content-between mb-2"
-                      style={styles.stickyHeader}
-                    >
+                  <div key={`modal-loading-${modalTitle}-${index}`} className="mb-4">
+                    <div className="d-flex align-items-center justify-content-between mb-2" style={styles.stickyHeader}>
                       <strong>Step {index + 1}</strong>
                       <Button variant="outline-secondary" size="sm" disabled>
                         Loading...
                       </Button>
                     </div>
+
                     <pre
                       style={{
                         backgroundColor: "#f8f9fa",
@@ -706,7 +684,7 @@ const ResultTableWithSteps = ({
               }
 
               return (
-                <div key={uuidv4()} className="mb-4">
+                 <div key={`modal-command-${modalTitle}-${index}-${cmd.command || "empty"}`} className="mb-4">
                   <div className="d-flex align-items-center justify-content-between mb-2">
                     <strong>Step {index + 1}</strong>
                     <CopyToClipboard text={cmd.command || ""} onCopy={() => setCopied(true)}>
@@ -715,6 +693,7 @@ const ResultTableWithSteps = ({
                       </Button>
                     </CopyToClipboard>
                   </div>
+
                   <pre
                     style={{
                       backgroundColor: "#f8f9fa",
@@ -734,6 +713,7 @@ const ResultTableWithSteps = ({
             <div className="text-center text-muted py-3">No commands available</div>
           )}
         </Modal.Body>
+
         <Modal.Footer>
           <Button variant="secondary" onClick={handleClose}>
             Close
@@ -743,89 +723,76 @@ const ResultTableWithSteps = ({
 
       <div style={{ ...style, display: "flex", flexDirection: "column" }}>
         <div style={{ overflow: "auto", flex: 1, position: "relative" }}>
-          <table
-            {...getTableProps()}
-            className="table table-bordered table-sm"
-            style={{ width: "100%", fontSize: UI_SIZES.tableFont }}
-          >
+          <table className="table table-bordered table-sm" style={{ width: "100%", fontSize: UI_SIZES.tableFont }}>
             <thead>
-              {headerGroups.map((headerGroup) => {
-                const { key, ...headerProps } = headerGroup.getHeaderGroupProps();
-                return (
-                  <React.Fragment key={key}>
-                    <tr {...headerProps}>
-                      {headerGroup.headers.map((column) => {
-                        const { key: colKey, ...colProps } = column.getHeaderProps();
-                        return (
-                          <th
-                            key={colKey}
-                            {...colProps}
-                            className="align-middle text-center"
-                            style={{
-                              padding: "12px 6px",
-                              verticalAlign: "middle",
-                              backgroundColor: "#f5f5f5",
-                              borderBottom: "2px solid #ddd",
-                              fontSize: UI_SIZES.headerFont,
-                              fontWeight: 900,
-                              ...styles.stickyTableHeader,
-                              ...colProps.style,
-                            }}
-                          >
-                            {column.render("Header")}
-                          </th>
-                        );
-                      })}
-                    </tr>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <React.Fragment key={headerGroup.id}>
+                  <tr>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className="align-middle text-center"
+                        style={{
+                          padding: "12px 6px",
+                          verticalAlign: "middle",
+                          backgroundColor: "#f5f5f5",
+                          borderBottom: "2px solid #ddd",
+                          fontSize: UI_SIZES.headerFont,
+                          fontWeight: 900,
+                          width: header.column.columnDef.size,
+                          ...styles.stickyTableHeader,
+                        }}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </th>
+                    ))}
+                  </tr>
 
-                    {doFilterColumn && (
-                      <tr>
-                        {headerGroup.headers.map((column) => (
-                          <th
-                            key={`filter-${column.id}`}
-                            style={{
-                              backgroundColor: "#f8fafc",
-                              padding: "8px 6px",
-                              borderBottom: "1px solid #ddd",
-                              verticalAlign: "top",
-                            }}
-                          >
-                            {column.canFilter ? column.render("Filter") : null}
-                          </th>
-                        ))}
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </thead>
-
-            <tbody {...getTableBodyProps()}>
-              {page.map((row) => {
-                prepareRow(row);
-                const { key, ...rowProps } = row.getRowProps();
-                return (
-                  <tr key={key} {...rowProps}>
-                    {row.cells.map((cell) => {
-                      const { key: cellKey, ...cellProps } = cell.getCellProps();
-                      return (
-                        <td
-                          key={cellKey}
-                          {...cellProps}
-                          className="align-middle"
+                  {doFilterColumn && (
+                    <tr>
+                      {headerGroup.headers.map((header) => (
+                        <th
+                          key={`filter-${header.id}`}
                           style={{
+                            backgroundColor: "#f8fafc",
                             padding: "8px 6px",
-                            fontSize: UI_SIZES.tableFont,
-                            ...cellProps.style,
+                            borderBottom: "1px solid #ddd",
+                            verticalAlign: "top",
                           }}
                         >
-                          {cell.render("Cell")}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
+                          {header.column.getCanFilter() ? (
+                            <ColumnTextFilter
+                              column={header.column}
+                              placeholder={header.column.columnDef.meta?.filterPlaceholder || "Filter..."}
+                            />
+                          ) : null}
+                        </th>
+                      ))}
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </thead>
+
+            <tbody>
+              {page.map((row) => (
+                <tr key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className="align-middle"
+                      style={{
+                        padding: "8px 6px",
+                        fontSize: UI_SIZES.tableFont,
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))}
 
               {page.length === 0 && (
                 <tr>
@@ -849,10 +816,10 @@ const ResultTableWithSteps = ({
             canNextPage={canNextPage}
             pageOptions={pageOptions}
             pageCount={pageCount}
-            gotoPage={gotoPage}
-            nextPage={nextPage}
-            previousPage={previousPage}
-            setPageSize={setPageSize}
+            gotoPage={table.setPageIndex}
+            nextPage={table.nextPage}
+            previousPage={table.previousPage}
+            setPageSize={table.setPageSize}
             pageIndex={pageIndex}
             pageSize={pageSize}
             pageSizeOptions={[20, 50, 100, 500, 1000]}
