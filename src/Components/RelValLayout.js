@@ -49,13 +49,6 @@ const CenterPageLoader = ({ message }) => (
 
 // ----- Helpers to preserve React16 query parsing behavior -----
 function normalizeSingleOrEmpty(val) {
-  // React16 behavior:
-  // - if missing => ""
-  // - if array => remove "", then:
-  //     len 0 => ""
-  //     len 1 => string
-  //     len >1 => array (can happen)
-  // - if string => string
   if (val == null) return "";
   if (typeof val === "string") return val;
 
@@ -70,8 +63,6 @@ function normalizeSingleOrEmpty(val) {
 }
 
 function normalizeMaybeArray(val) {
-  // For archs/flavors/status/filterStatus React16 accepted string or array.
-  // We keep what query-string returns (string|array|undefined), but normalize undefined to [] for TogglesShowRow.
   if (val == null) return [];
   if (Array.isArray(val)) return val;
   if (typeof val === "string") return [val];
@@ -90,16 +81,12 @@ const RelValLayout = () => {
 
   const { state, fetchQueData, isLoading } = useRelVal();
 
-  // Extract data for current queue
   const queData = state?.structure?.[params?.date]?.[params?.que] || {};
   const allArchs = queData?.allArchs || [];
   const allGPUs = queData?.allGPUs || [];
   const allOthers = queData?.allOthers || [];
   const allFlavors = queData?.flavors ? Object.keys(queData.flavors).sort().reverse() : [];
 
-  // -----------------------------
-  // Fetch data when params change
-  // -----------------------------
   useEffect(() => {
     let cancelled = false;
 
@@ -117,9 +104,6 @@ const RelValLayout = () => {
     return () => { cancelled = true; };
   }, [params?.date, params?.que, fetchQueData]);
 
-  // -----------------------------
-  // Parse query params 
-  // -----------------------------
   const parsedQuery = useMemo(() => queryString.parse(location.search), [location.search]);
 
   let selectedArchs = useMemo(
@@ -142,7 +126,6 @@ const RelValLayout = () => {
     [parsedQuery]
   );
 
-  // special handling for GPUs/Others
   let selectedGPUs = useMemo(
     () => normalizeSingleOrEmpty(parsedQuery[NAV_CONTROLS_ENUM.SELECTED_GPUS]),
     [parsedQuery]
@@ -153,17 +136,12 @@ const RelValLayout = () => {
     [parsedQuery]
   );
 
-  // -----------------------------
-  // behavior: if URL has no query, set defaults
-  // Only do this once data is available.
-  // -----------------------------
   useEffect(() => {
     if (!params?.date || !params?.que) return;
     if (!queData || Object.keys(queData).length === 0) return;
 
-    // did this when location.search === ""
     if (location.search === "") {
-      const newLoc = { ...location }; // partiallyUpdateLocationQuery mutates
+      const newLoc = { ...location };
       partiallyUpdateLocationQuery(newLoc, NAV_CONTROLS_ENUM.SELECTED_ARCHS, allArchs);
       partiallyUpdateLocationQuery(newLoc, NAV_CONTROLS_ENUM.SELECTED_GPUS, allGPUs);
       partiallyUpdateLocationQuery(newLoc, NAV_CONTROLS_ENUM.SELECTED_OTHERS, allOthers);
@@ -187,9 +165,6 @@ const RelValLayout = () => {
     allFlavors
   ]);
 
-  // -----------------------------
-  // Update URL helper 
-  // -----------------------------
   const updateUrlParam = useCallback((param, values) => {
     setShowNoMatching(false);
 
@@ -200,9 +175,6 @@ const RelValLayout = () => {
     );
   }, [location, navigate]);
 
-  // -----------------------------
-  // Controls 
-  // -----------------------------
   const controlList = useMemo(() => ([
     <TogglesShowRow
       key="flavors"
@@ -264,9 +236,6 @@ const RelValLayout = () => {
     updateUrlParam
   ]);
 
-  // -----------------------------
-  // Filter RelVals 
-  // -----------------------------
   const filteredData = useMemo(() => {
     if (!queData || Object.keys(queData).length === 0) return [];
 
@@ -319,7 +288,6 @@ const RelValLayout = () => {
   const getTopPadding = () => navigationHeight + 20;
   const getSizeForTable = () => document.documentElement.clientHeight - getTopPadding() - 20;
 
-  // Result table props
   const resultTableWithStepsSettings = useMemo(() => ({
     style: { height: getSizeForTable(), overflow: 'auto' },
     allArchs,
@@ -353,14 +321,12 @@ const RelValLayout = () => {
     filteredData
   ]);
 
-  // Loading state
   if (isLoading && !dataLoaded) {
     return (
       <CenterPageLoader message={`Loading ${params.que} RelVals...`} />
     );
   }
 
-  // No data state
   if (!queData || Object.keys(queData).length === 0) {
     return (
       <div style={{
