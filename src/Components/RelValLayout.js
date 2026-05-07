@@ -19,6 +19,34 @@ const NAV_CONTROLS_ENUM = {
   SELECTED_FILTER_STATUS: "selectedFilterStatus"
 };
 
+const CenterPageLoader = ({ message }) => (
+  <div style={{
+    minHeight: 'calc(100vh - 120px)',
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingTop: 90,
+    textAlign: 'center'
+  }}>
+    <div>
+      <div className="spinner-border text-dark" role="status" style={{
+        width: 44,
+        height: 44
+      }}>
+        <span className="visually-hidden">Loading...</span>
+      </div>
+      <h6 style={{ marginTop: 18 }}>{message}</h6>
+      <p style={{
+        marginTop: 12,
+        color: '#8a97ad',
+        fontSize: 13
+      }}>
+        Please wait while release data is being loaded
+      </p>
+    </div>
+  </div>
+);
+
 // ----- Helpers to preserve React16 query parsing behavior -----
 function normalizeSingleOrEmpty(val) {
   // React16 behavior:
@@ -57,6 +85,8 @@ const RelValLayout = () => {
 
   const [navigationHeight, setNavigationHeight] = useState(0);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [showNoMatching, setShowNoMatching] = useState(false);
+  const [userChangedFilters, setUserChangedFilters] = useState(false);
 
   const { state, fetchQueData, isLoading } = useRelVal();
 
@@ -75,6 +105,8 @@ const RelValLayout = () => {
 
     const loadData = async () => {
       setDataLoaded(false);
+      setShowNoMatching(false);
+      setUserChangedFilters(false);
       if (params?.date && params?.que) {
         await fetchQueData({ date: params.date, que: params.que });
         if (!cancelled) setDataLoaded(true);
@@ -159,6 +191,8 @@ const RelValLayout = () => {
   // Update URL helper 
   // -----------------------------
   const updateUrlParam = useCallback((param, values) => {
+    setShowNoMatching(false);
+
     const newLocation = partiallyUpdateLocationQuery(location, param, values);
     goToLinkWithoutHistoryUpdate(
       navigate,
@@ -246,6 +280,28 @@ const RelValLayout = () => {
     });
   }, [queData, selectedArchs, selectedGPUs, selectedOthers, selectedFlavors, selectedStatus]);
 
+  useEffect(() => {
+    setShowNoMatching(false);
+
+    if (!userChangedFilters) return;
+    if (isLoading || !dataLoaded) return;
+    if (!queData || Object.keys(queData).length === 0) return;
+    if (filteredData.length > 0) return;
+
+    const timer = setTimeout(() => {
+      setShowNoMatching(true);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [
+    userChangedFilters,
+    isLoading,
+    dataLoaded,
+    queData,
+    filteredData,
+    location.search
+  ]);
+
   // -----------------------------
   // Navigation height
   // -----------------------------
@@ -300,18 +356,7 @@ const RelValLayout = () => {
   // Loading state
   if (isLoading && !dataLoaded) {
     return (
-      <div style={{
-        paddingTop: getTopPadding(),
-        paddingLeft: 0,
-        paddingRight: 0,
-        paddingBottom: 50,
-        textAlign: 'center'
-      }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-        <p style={{ marginTop: 20 }}>Loading RelVal data...</p>
-      </div>
+      <CenterPageLoader message={`Loading ${params.que} RelVals...`} />
     );
   }
 
@@ -339,30 +384,45 @@ const RelValLayout = () => {
       paddingBottom: 20,
       width: '100%'
     }}>
-      <RelValNavigation
-        id="relval-navigation"
-        que={params.que}
-        relvalInfo={`${params.que}_X_${params.date}`}
-        controlList={controlList}
-        onHeightChange={setNavigationHeight}
-      />
+      <div
+        onMouseDownCapture={() => setUserChangedFilters(true)}
+        onKeyDownCapture={() => setUserChangedFilters(true)}
+      >
+        <RelValNavigation
+          id="relval-navigation"
+          que={params.que}
+          relvalInfo={`${params.que}_X_${params.date}`}
+          controlList={controlList}
+          onHeightChange={setNavigationHeight}
+        />
+      </div>
 
       {filteredData.length > 0 ? (
         <ResultTableWithSteps {...resultTableWithStepsSettings} />
-      ) : (
+      ) : showNoMatching ? (
         <div style={{
-          textAlign: 'center',
-          paddingTop: 40,
-          paddingBottom: 40,
-          paddingLeft: 20,
-          paddingRight: 20,
-          background: '#f8f9fa',
-          margin: '20px',
-          borderRadius: '8px'
+          minHeight: getSizeForTable(),
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center'
         }}>
-          <h5>No matching information found</h5>
-          <p>Try adjusting your filters</p>
+          <div style={{
+            width: 'calc(100% - 40px)',
+            paddingTop: 40,
+            paddingBottom: 40,
+            paddingLeft: 20,
+            paddingRight: 20,
+            background: '#f8f9fa',
+            margin: '20px',
+            borderRadius: '8px'
+          }}>
+            <h5>No matching information found</h5>
+            <p>Try adjusting your filters</p>
+          </div>
         </div>
+      ) : (
+        <CenterPageLoader message={`Loading ${params.que} RelVals...`} />
       )}
     </div>
   );
