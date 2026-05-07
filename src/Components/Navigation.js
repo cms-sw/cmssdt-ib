@@ -14,8 +14,6 @@ import { useLocation } from "react-router-dom";
 import {
   BsQuestionCircle,
   BsExclamationCircle,
-  BsCheckCircle,
-  BsXCircle,
   BsList,
   BsArrowRepeat,
   BsFilter,
@@ -23,7 +21,8 @@ import {
   BsBox,
   BsCalendarEvent,
   BsChevronUp,
-  BsChevronDown
+  BsChevronDown,
+  BsEyeFill
 } from "react-icons/bs";
 
 import {
@@ -41,7 +40,8 @@ import {
   FaArrowUp,
   FaArrowDown,
   FaThumbtack,
-  FaMinus
+  FaMinus,
+  FaCopy
 } from "react-icons/fa";
 import { GoGitPullRequest } from "react-icons/go";
 
@@ -63,34 +63,21 @@ const THEME = {
   }
 };
 
-/**
- * NAV THEME (edit colors here)
- */
 const NAV_THEME = {
   navbarBg: "rgba(15, 23, 42, 0.92)",
   navbarBorder: "rgba(148,163,184,0.25)",
-
-  // main text
   navbarText: "#f8fafc",
   navbarTextMuted: "rgba(248,250,252,0.78)",
-
-  // pills
   pillHoverBg: "rgba(59,130,246,0.18)",
-
-  // dropdowns
   dropdownBg: "#0b1220",
   dropdownBorder: "rgba(148,163,184,0.22)",
   dropdownItemHover: "rgba(255,255,255,0.06)",
-
-  // buttons
   filtersBtnBg: THEME.primary,
   filtersBtnText: "#ffffff",
   iconBtnBorder: "rgba(148,163,184,0.45)",
-
   brandChipGradient: `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.primaryLight} 100%)`
 };
 
-// Custom dropdown toggle that looks like a nav pill
 const PillDropdownToggle = forwardRef(({ children, onClick, active }, ref) => (
   <a
     href="#"
@@ -171,11 +158,9 @@ const guideSphereStyles = {
 
 const GuideSphere = ({ variant = "success", children }) => (
   <span
-    style={{
+   style={{ 
       ...guideSphereStyles.base,
-      ...guideSphereStyles[variant]
-    }}
-  >
+      ...guideSphereStyles[variant] }}>
     {children}
   </span>
 );
@@ -204,16 +189,18 @@ const GuideCard = ({ icon, title, text }) => (
     </div>
   </div>
 );
+
 const FloatingControlBadge = ({
   children,
   bg = "#ffffff",
   color = "#334155",
   border = "#cbd5e1",
   size = 44,
-  rounded = "50%"
+  rounded = "50%",
+  className = ""
 }) => (
   <span
-    className="d-inline-flex align-items-center justify-content-center position-relative"
+    className={`d-inline-flex align-items-center justify-content-center position-relative ${className}`}
     style={{
       width: size,
       height: size,
@@ -243,6 +230,7 @@ const FloatingControlCard = ({ icon, title, text }) => (
     </div>
   </div>
 );
+
 const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests = false, onToggleAllPullRequests }) => {
   const location = useLocation();
 
@@ -252,7 +240,6 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
 
   const handleClose = () => setShowHelpModal(false);
   const handleShow = () => setShowHelpModal(true);
-
   const handleNavbarToggle = () => setExpanded((v) => !v);
   const handleNavbarClose = () => setExpanded(false);
   const toggleFilters = () => setShowFilters((v) => !v);
@@ -318,12 +305,10 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
 
         body { background: ${THEME.pageBg}; }
 
-        /* --- NAVBAR baseline --- */
         #navigation.navbar {
           color: ${NAV_THEME.navbarText};
         }
 
-        /* Force ALL navbar text/link colors to be readable */
         #navigation .navbar-brand,
         #navigation .navbar-nav .nav-link,
         #navigation .dropdown-toggle,
@@ -332,14 +317,12 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
           color: ${NAV_THEME.navbarText} !important;
         }
 
-        /* Muted text inside navbar if needed */
         #navigation .text-muted,
         #navigation .small,
         #navigation .nav-link .text-muted {
           color: ${NAV_THEME.navbarTextMuted} !important;
         }
 
-        /* pills */
         .navpill {
           border-radius: 12px;
           padding: 0.5rem 0.9rem !important;
@@ -366,7 +349,6 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
           color: ${NAV_THEME.navbarTextMuted};
         }
 
-        /* icons buttons */
         .icon-btn {
           border-radius: 999px !important;
           display: inline-flex !important;
@@ -376,7 +358,6 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
 
         .btn-pill { border-radius: 999px !important; }
 
-        /* --- Dropdown menu styling for dark navbar --- */
         .dropdown-menu-pro {
           background: ${NAV_THEME.dropdownBg} !important;
           border: 1px solid ${NAV_THEME.dropdownBorder} !important;
@@ -399,11 +380,24 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
           color: ${NAV_THEME.navbarText} !important;
         }
 
-        /* Fix Bootstrap default "active" background in dark dropdown */
         .dropdown-menu-pro .dropdown-item.active,
         .dropdown-menu-pro .dropdown-item:active {
           background: rgba(59,130,246,0.35) !important;
           color: ${NAV_THEME.navbarText} !important;
+        }
+
+        .guide-clickable-icon {
+          cursor: pointer;
+          transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+        }
+
+        .guide-clickable-icon:active {
+          transform: scale(0.9);
+          box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.14), 0 6px 14px rgba(15, 23, 42, 0.12) !important;
+        }
+
+        .guide-clickable-icon:hover {
+          background: #f8fafc !important;
         }
       `}</style>
 
@@ -425,7 +419,6 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
           <Navbar.Brand className="d-flex align-items-center">
             <div
               style={{
-                //background: "#ffffff",
                 padding: "4px 4px",
                 borderRadius: "8px",
                 marginRight: "8px",
@@ -436,18 +429,17 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
               }}
             >
               <img
-              src="CMS_logo-round.png"
-              alt="CMS Offline & Computing"
-              style={{
-                height: "36px",
-                width: "auto",
-                marginRight: "10px",
-                objectFit: "contain",
-                transform: "scale(1.4)"
-              }}
-            />
+                src="CMS_logo-round.png"
+                alt="CMS Offline & Computing"
+                style={{
+                  height: "36px",
+                  width: "auto",
+                  marginRight: "10px",
+                  objectFit: "contain",
+                  transform: "scale(1.4)"
+                }}
+              />
             </div>
-            
 
             <span
               className="fw-bold"
@@ -532,6 +524,7 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
                   {showAllPullRequests ? <FaMinus size={7} /> : <FaPlus size={7} />}
                 </span>
               </Button>
+
               <Button
                 size="sm"
                 onClick={toggleFilters}
@@ -604,7 +597,6 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
         </Container>
       </Navbar>
 
-      {/* Filters panel */}
       <div
         style={{
           position: "fixed",
@@ -677,7 +669,6 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
 
       <div style={{ height: spacerHeight, transition: "height 0.25s ease" }} />
 
-      {/* Help Modal (UNCHANGED) */}
       <Modal show={showHelpModal} onHide={handleClose} centered size="lg" className="help-modal">
         <Modal.Header closeButton className="bg-light border-0">
           <Modal.Title className="d-flex align-items-center">
@@ -694,354 +685,409 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
           </Modal.Title>
         </Modal.Header>
 
-          <Modal.Body className="px-4 py-4">
-            <div className="row g-3 mb-4">
-              {/* Full Build */}
-              <div className="col-md-6">
-                <div
-                  className="d-flex align-items-start p-3 rounded-3 h-100"
-                  style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
-                >
-                  <span
-                    className="me-3 d-inline-flex align-items-center justify-content-center rounded-3"
-                    style={{
-                      width: 44,
-                      height: 44,
-                      background: "#5EB85E",
-                      border: "1px solid #3E9A3E",
-                      color: "#ffffff",
-                      flexShrink: 0
-                    }}
-                  >
-                    <FaWrench size={16} />
-                  </span>
-                  <div>
-                    <div className="fw-semibold mb-1">Full Build</div>
-                    <small className="text-muted">
-                      Complete build of the release.
-                    </small>
-                  </div>
-                </div>
-              </div>
-
-              {/* Patch Release */}
-              <div className="col-md-6">
-                <div
-                  className="d-flex align-items-start p-3 rounded-3 h-100"
-                  style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
-                >
-                  <span
-                    className="me-3 d-inline-flex align-items-center justify-content-center rounded-3"
-                    style={{
-                      width: 44,
-                      height: 44,
-                      background: "#ffffff",
-                      border: "1px solid #e2e8f0",
-                      color: "#facc15",
-                      flexShrink: 0
-                    }}
-                  >
-                    <FaTools size={18} />
-                  </span>
-                  <div>
-                    <div className="fw-semibold mb-1">Patch Release</div>
-                    <small className="text-muted">
-                      Patch release.
-                    </small>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="mb-4">
-  <div className="fw-semibold mb-3" style={{ color: THEME.text.primary, fontSize: "1rem" }}>
-    Page Controls
-  </div>
-
-  <div className="row g-3">
-    <div className="col-md-6">
-      <FloatingControlCard
-        icon={
-          <FloatingControlBadge bg="#ffffff" color="#334155" border="#cbd5e1">
-            <GoGitPullRequest size={20} />
-            <span
-              style={{
-                position: "absolute",
-                top: 3,
-                right: 3,
-                width: 16,
-                height: 16,
-                borderRadius: "50%",
-                background: "#22c55e",
-                color: "#ffffff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 9,
-                boxShadow: "0 2px 6px rgba(0,0,0,0.18)"
-              }}
-            >
-              <FaPlus size={8} />
-            </span>
-          </FloatingControlBadge>
-        }
-        title="Expand all commits & PRs"
-        text="Open all commit and pull request sections at once. The same control can also collapse them again."
-      />
-    </div>
-
-    <div className="col-md-6">
-      <FloatingControlCard
-        icon={
-          <FloatingControlBadge bg="#ffffff" color="#334155" border="#cbd5e1">
-            <FaArrowUp size={13} />
-          </FloatingControlBadge>
-        }
-        title="Go to top"
-        text="Scroll quickly to the top of the page."
-      />
-    </div>
-
-    <div className="col-md-6">
-      <FloatingControlCard
-        icon={
-          <FloatingControlBadge bg="#ffffff" color="#334155" border="#cbd5e1">
-            <FaArrowDown size={13} />
-          </FloatingControlBadge>
-        }
-        title="Go to bottom"
-        text="Scroll quickly to the bottom of the page."
-      />
-    </div>
-
-    <div className="col-md-6">
-      <FloatingControlCard
-        icon={
-          <span
-            className="d-inline-flex align-items-center justify-content-center"
-            style={{
-              width: 44,
-              height: 52,
-              borderRadius: 12,
-              background: "rgba(255,255,255,0.98)",
-              color: "#334155",
-              border: "1px solid #cbd5e1",
-              boxShadow: "0 6px 14px rgba(15, 23, 42, 0.12)",
-              flexShrink: 0
-            }}
-          >
-            <FaThumbtack size={13} />
-          </span>
-        }
-        title="Jump to release"
-        text="Open the release navigator and jump directly to a release section."
-      />
-    </div>
-  </div>
-</div>
-            <div className="mb-4">
-              <div className="fw-semibold mb-3" style={{ color: THEME.text.primary, fontSize: "1rem" }}>
-                Status Indicators
-              </div>
-
-              <div className="row g-3">
-                <div className="col-md-6">
-                  <div
-                    className="d-flex align-items-start p-3 rounded-3 h-100"
-                    style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
-                  >
-                    <span className="me-3" style={{ flexShrink: 0 }}>
-                      <GuideSphere variant="success">
-                        <FaCheck size={12} />
-                      </GuideSphere>
-                    </span>
-                    <div>
-                      <div className="fw-semibold mb-1">Passed</div>
-                      <small className="text-muted">
-                        Passed result shown with a green sphere and tick.
-                      </small>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-md-6">
-                  <div
-                    className="d-flex align-items-start p-3 rounded-3 h-100"
-                    style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
-                  >
-                    <span className="me-3" style={{ flexShrink: 0 }}>
-                      <GuideSphere variant="danger">
-                        <FaTimes size={12} />
-                      </GuideSphere>
-                    </span>
-                    <div>
-                      <div className="fw-semibold mb-1">Error</div>
-                      <small className="text-muted">
-                        Passed result shown with a red sphere and cross.
-                      </small>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-md-6">
-                  <div
-                    className="d-flex align-items-start p-3 rounded-3 h-100"
-                    style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
-                  >
-                    <span className="me-3" style={{ flexShrink: 0 }}>
-                      <GuideSphere variant="warning">14</GuideSphere>
-                    </span>
-                    <div>
-                      <div className="fw-semibold mb-1">Warning Count</div>
-                      <small className="text-muted">
-                        Yellow sphere with a number indicates warnings or known failed items.
-                      </small>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-md-6">
-                  <div
-                    className="d-flex align-items-start p-3 rounded-3 h-100"
-                    style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
-                  >
-                    <span className="me-3" style={{ flexShrink: 0 }}>
-                      <GuideSphere variant="success">4779</GuideSphere>
-                    </span>
-                    <div>
-                      <div className="fw-semibold mb-1">Passed Count</div>
-                      <small className="text-muted">
-                        Green sphere with a number indicates successful counted results.
-                      </small>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-md-6">
-                  <div
-                    className="d-flex align-items-start p-3 rounded-3 h-100"
-                    style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
-                  >
-                    <span className="me-3" style={{ flexShrink: 0 }}>
-                      <GuideSphere variant="danger">512</GuideSphere>
-                    </span>
-                    <div>
-                      <div className="fw-semibold mb-1">Error Count</div>
-                      <small className="text-muted">
-                        Red sphere with a number indicates failing counted results.
-                      </small>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-md-6">
-                  <GuideCard
-                    icon={<BsArrowRepeat size={18} />}
-                    title="In Progress"
-                    text="The check is still running or results are not ready yet."
-                  />
-                </div>
-
-                <div className="col-md-6">
-                  <GuideCard
-                    icon={<BsList size={18} />}
-                    title="Available / Ready"
-                    text="The item is available to open, inspect, or navigate."
-                  />
-                </div>
-
-                <div className="col-md-6">
-                  <GuideCard
-                    icon={<BsFilter size={18} />}
-                    title="Filters"
-                    text="Use the Filters button to show or hide architecture and flavor filters."
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <div className="fw-semibold mb-3" style={{ color: THEME.text.primary, fontSize: "1rem" }}>
-                Row Icons
-              </div>
-
+        <Modal.Body className="px-4 py-4">
+          <div className="row g-3 mb-4">
+            <div className="col-md-6">
               <div
-                className="p-3 rounded-3"
+                className="d-flex align-items-start p-3 rounded-3 h-100"
                 style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
               >
-                <div className="row g-3">
-                  <div className="col-md-6">
-                    <div className="d-flex align-items-start">
-                      <span className="me-3 mt-1" style={{ color: "#64748b" }}>
-                        <FaCubes size={15} />
+                <span
+                  className="me-3 d-inline-flex align-items-center justify-content-center rounded-3"
+                  style={{
+                    width: 44,
+                    height: 44,
+                    background: "#5EB85E",
+                    border: "1px solid #3E9A3E",
+                    color: "#ffffff",
+                    flexShrink: 0
+                  }}
+                >
+                  <FaWrench size={16} />
+                </span>
+                <div>
+                  <div className="fw-semibold mb-1">Full Build</div>
+                  <small className="text-muted">Complete build of the release.</small>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-md-6">
+              <div
+                className="d-flex align-items-start p-3 rounded-3 h-100"
+                style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+              >
+                <span
+                  className="me-3 d-inline-flex align-items-center justify-content-center rounded-3"
+                  style={{
+                    width: 44,
+                    height: 44,
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
+                    color: "#facc15",
+                    flexShrink: 0
+                  }}
+                >
+                  <FaTools size={18} />
+                </span>
+                <div>
+                  <div className="fw-semibold mb-1">Patch Release</div>
+                  <small className="text-muted">Patch release.</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <div className="fw-semibold mb-3" style={{ color: THEME.text.primary, fontSize: "1rem" }}>
+              Page Controls
+            </div>
+
+            <div className="row g-3">
+              <div className="col-md-6">
+                <FloatingControlCard
+                  icon={
+                    <FloatingControlBadge bg="#ffffff" color="#334155" border="#cbd5e1" className="guide-clickable-icon">
+                      <GoGitPullRequest size={20} />
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 3,
+                          right: 3,
+                          width: 16,
+                          height: 16,
+                          borderRadius: "50%",
+                          background: "#22c55e",
+                          color: "#ffffff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 9,
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.18)"
+                        }}
+                      >
+                        <FaPlus size={8} />
                       </span>
-                      <div>
-                        <div className="fw-semibold mb-1">Builds</div>
-                        <small className="text-muted">
-                          Compilation and build status of the release.
-                        </small>
-                      </div>
+                    </FloatingControlBadge>
+                  }
+                  title="Expand all commits & PRs"
+                  text="Open all commit and pull request sections at once. The same control can also collapse them again."
+                />
+              </div>
+
+              <div className="col-md-6">
+                <FloatingControlCard
+                  icon={
+                    <FloatingControlBadge bg="#ffffff" color="#334155" border="#cbd5e1" className="guide-clickable-icon">
+                      <FaArrowUp size={13} />
+                    </FloatingControlBadge>
+                  }
+                  title="Go to top"
+                  text="Scroll quickly to the top of the page."
+                />
+              </div>
+
+              <div className="col-md-6">
+                <FloatingControlCard
+                  icon={
+                    <FloatingControlBadge bg="#ffffff" color="#334155" border="#cbd5e1" className="guide-clickable-icon">
+                      <FaArrowDown size={13} />
+                    </FloatingControlBadge>
+                  }
+                  title="Go to bottom"
+                  text="Scroll quickly to the bottom of the page."
+                />
+              </div>
+
+              <div className="col-md-6">
+                <FloatingControlCard
+                  icon={
+                    <span
+                      className="d-inline-flex align-items-center justify-content-center guide-clickable-icon"
+                      style={{
+                        width: 44,
+                        height: 52,
+                        borderRadius: 12,
+                        background: "rgba(255,255,255,0.98)",
+                        color: "#334155",
+                        border: "1px solid #cbd5e1",
+                        boxShadow: "0 6px 14px rgba(15, 23, 42, 0.12)",
+                        flexShrink: 0
+                      }}
+                    >
+                      <FaThumbtack size={13} />
+                    </span>
+                  }
+                  title="Jump to release"
+                  text="Open the release navigator and jump directly to a release section."
+                />
+              </div>
+
+              <div className="col-md-6">
+                <FloatingControlCard
+                  icon={
+                    <FloatingControlBadge bg="#ffffff" color="#2563eb" border="#dbeafe" className="guide-clickable-icon">
+                      <BsEyeFill size={18} />
+                    </FloatingControlBadge>
+                  }
+                  title="Show / hide one IB"
+                  text="The blue eye icon on each release row shows or hides the IB details for that specific release."
+                />
+              </div>
+
+              <div className="col-md-6">
+  <FloatingControlCard
+    icon={
+      <FloatingControlBadge
+        bg="#ffffff"
+        color="#334155"
+        border="#cbd5e1"
+        className="guide-clickable-icon"
+      >
+        <BsEyeFill size={18} />
+      </FloatingControlBadge>
+    }
+    title="Show / hide all IBs"
+    text="The floating eye control shows or hides all IB sections on the page."
+  />
+</div>
+
+              <div className="col-md-6">
+                <FloatingControlCard
+                  icon={
+                    <FloatingControlBadge bg="#ffffff" color="#2563eb" border="#dbeafe" size={34} className="guide-clickable-icon">
+                      <GoGitPullRequest size={16} />
+                    </FloatingControlBadge>
+                  }
+                  title="Show / hide PRs for one IB"
+                  text="The Git pull request icon before each release name shows or hides the commits and pull requests for that IB."
+                />
+              </div>
+
+              <div className="col-md-6">
+                <FloatingControlCard
+                  icon={
+                    <FloatingControlBadge
+                      bg="#eef4ff"
+                      color="#2563eb"
+                      border="#c7d2fe"
+                      size={34}
+                      rounded="8px"
+                      className="guide-clickable-icon"
+                    >
+                      <FaCopy size={15} />
+                    </FloatingControlBadge>
+                  }
+                  title="Copy IB name"
+                  text="The copy icon after a release name copies the full IB name, for example CMSSW_17_0_X_2026-05-06-1100."
+                />
+              </div>
+
+              <div className="col-md-6">
+                <FloatingControlCard
+                  icon={
+                    <FloatingControlBadge
+                      bg="#ffffff"
+                      color="#111827"
+                      border="#e2e8f0"
+                      size={24}
+                      rounded="6px"
+                      className="guide-clickable-icon"
+                    >
+                      <FaCopy size={12} />
+                    </FloatingControlBadge>
+                  }
+                  title="Copy flavor"
+                  text="The small copy icon in the flavor header copies the selected flavor name."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <div className="fw-semibold mb-3" style={{ color: THEME.text.primary, fontSize: "1rem" }}>
+              Status Indicators
+            </div>
+
+            <div className="row g-3">
+              <div className="col-md-6">
+                <div
+                  className="d-flex align-items-start p-3 rounded-3 h-100"
+                  style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+                >
+                  <span className="me-3" style={{ flexShrink: 0 }}>
+                    <GuideSphere variant="success">
+                      <FaCheck size={12} />
+                    </GuideSphere>
+                  </span>
+                  <div>
+                    <div className="fw-semibold mb-1">Passed</div>
+                    <small className="text-muted">Passed result shown with a green sphere and tick.</small>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-md-6">
+                <div
+                  className="d-flex align-items-start p-3 rounded-3 h-100"
+                  style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+                >
+                  <span className="me-3" style={{ flexShrink: 0 }}>
+                    <GuideSphere variant="danger">
+                      <FaTimes size={12} />
+                    </GuideSphere>
+                  </span>
+                  <div>
+                    <div className="fw-semibold mb-1">Error</div>
+                    <small className="text-muted">Failed result shown with a red sphere and cross.</small>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-md-6">
+                <div
+                  className="d-flex align-items-start p-3 rounded-3 h-100"
+                  style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+                >
+                  <span className="me-3" style={{ flexShrink: 0 }}>
+                    <GuideSphere variant="warning">14</GuideSphere>
+                  </span>
+                  <div>
+                    <div className="fw-semibold mb-1">Warning Count</div>
+                    <small className="text-muted">Yellow sphere with a number indicates warnings or known failed items.</small>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-md-6">
+                <div
+                  className="d-flex align-items-start p-3 rounded-3 h-100"
+                  style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+                >
+                  <span className="me-3" style={{ flexShrink: 0 }}>
+                    <GuideSphere variant="success">4779</GuideSphere>
+                  </span>
+                  <div>
+                    <div className="fw-semibold mb-1">Passed Count</div>
+                    <small className="text-muted">Green sphere with a number indicates successful counted results.</small>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-md-6">
+                <div
+                  className="d-flex align-items-start p-3 rounded-3 h-100"
+                  style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+                >
+                  <span className="me-3" style={{ flexShrink: 0 }}>
+                    <GuideSphere variant="danger">512</GuideSphere>
+                  </span>
+                  <div>
+                    <div className="fw-semibold mb-1">Error Count</div>
+                    <small className="text-muted">Red sphere with a number indicates failing counted results.</small>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-md-6">
+                <GuideCard
+                  icon={<BsArrowRepeat size={18} />}
+                  title="In Progress"
+                  text="The check is still running or results are not ready yet."
+                />
+              </div>
+
+              <div className="col-md-6">
+                <GuideCard
+                  icon={<BsList size={18} />}
+                  title="Available / Ready"
+                  text="The item is available to open, inspect, or navigate."
+                />
+              </div>
+
+              <div className="col-md-6">
+                <GuideCard
+                  icon={<BsFilter size={18} />}
+                  title="Filters"
+                  text="Use the Filters button to show or hide architecture and flavor filters."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="fw-semibold mb-3" style={{ color: THEME.text.primary, fontSize: "1rem" }}>
+              Row Icons
+            </div>
+
+            <div
+              className="p-3 rounded-3"
+              style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}
+            >
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <div className="d-flex align-items-start">
+                    <span className="me-3 mt-1" style={{ color: "#64748b" }}>
+                      <FaCubes size={15} />
+                    </span>
+                    <div>
+                      <div className="fw-semibold mb-1">Builds</div>
+                      <small className="text-muted">Compilation and build status of the release.</small>
                     </div>
                   </div>
+                </div>
 
-                  <div className="col-md-6">
-                    <div className="d-flex align-items-start">
-                      <span className="me-3 mt-1" style={{ color: "#64748b" }}>
-                        <FaVial size={15} />
-                      </span>
-                      <div>
-                        <div className="fw-semibold mb-1">Unit</div>
-                        <small className="text-muted">
-                          Automated unit test results.
-                        </small>
-                      </div>
+                <div className="col-md-6">
+                  <div className="d-flex align-items-start">
+                    <span className="me-3 mt-1" style={{ color: "#64748b" }}>
+                      <FaVial size={15} />
+                    </span>
+                    <div>
+                      <div className="fw-semibold mb-1">Unit</div>
+                      <small className="text-muted">Automated unit test results.</small>
                     </div>
                   </div>
+                </div>
 
-                  <div className="col-md-6">
-                    <div className="d-flex align-items-start">
-                      <span className="me-3 mt-1" style={{ color: "#64748b" }}>
-                        <FaLayerGroup size={15} />
-                      </span>
-                      <div>
-                        <div className="fw-semibold mb-1">RelVal</div>
-                        <small className="text-muted">
-                          Validation workflows and comparison results.
-                        </small>
-                      </div>
+                <div className="col-md-6">
+                  <div className="d-flex align-items-start">
+                    <span className="me-3 mt-1" style={{ color: "#64748b" }}>
+                      <FaLayerGroup size={15} />
+                    </span>
+                    <div>
+                      <div className="fw-semibold mb-1">RelVal</div>
+                      <small className="text-muted">Validation workflows and comparison results.</small>
                     </div>
                   </div>
+                </div>
 
-                  <div className="col-md-6">
-                    <div className="d-flex align-items-start">
-                      <span className="me-3 mt-1" style={{ color: "#64748b" }}>
-                        <FaPlus size={15} />
-                      </span>
-                      <div>
-                        <div className="fw-semibold mb-1">AddOn</div>
-                        <small className="text-muted">
-                          Additional checks and special tests.
-                        </small>
-                      </div>
+                <div className="col-md-6">
+                  <div className="d-flex align-items-start">
+                    <span className="me-3 mt-1" style={{ color: "#64748b" }}>
+                      <FaPlus size={15} />
+                    </span>
+                    <div>
+                      <div className="fw-semibold mb-1">AddOn</div>
+                      <small className="text-muted">Additional checks and special tests.</small>
                     </div>
                   </div>
+                </div>
 
-                  <div className="col-md-6">
-                    <div className="d-flex align-items-start">
-                      <span className="me-3 mt-1" style={{ color: "#64748b" }}>
-                        <FaClipboardList size={15} />
-                      </span>
-                      <div>
-                        <div className="fw-semibold mb-1">Q/A</div>
-                        <small className="text-muted">
-                          Quality checks and detailed report links.
-                        </small>
-                      </div>
+                <div className="col-md-6">
+                  <div className="d-flex align-items-start">
+                    <span className="me-3 mt-1" style={{ color: "#64748b" }}>
+                      <FaClipboardList size={15} />
+                    </span>
+                    <div>
+                      <div className="fw-semibold mb-1">Q/A</div>
+                      <small className="text-muted">Quality checks and detailed report links.</small>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </Modal.Body>
+          </div>
+        </Modal.Body>
 
         <Modal.Footer className="border-0 bg-light">
           <Button variant="primary" onClick={handleClose} className="px-4">
