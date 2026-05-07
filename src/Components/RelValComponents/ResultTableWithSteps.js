@@ -786,6 +786,7 @@ const ResultTableWithSteps = ({
                       style={{
                         padding: "2px 6px",
                         fontSize: UI_SIZES.tableFont,
+                        backgroundColor: row.index % 2 === 0 ? "#ffffff" : "#f1f5f9"
                       }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
