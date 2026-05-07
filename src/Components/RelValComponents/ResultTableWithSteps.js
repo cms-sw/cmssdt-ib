@@ -32,11 +32,11 @@ const UI_SIZES = {
   tableFont: "0.88rem",
   headerFont: "0.92rem",
   archFont: "0.95rem",
-  archPaddingY: 5,
+  archPaddingY: 3,
   archPaddingX: 7,
   badgeFont: "0.82rem",
-  badgePadY: 4,
-  badgePadX: 9,
+  badgePadY: 2,
+  badgePadX: 7,
   workflowFont: "0.88rem",
 };
 
@@ -558,7 +558,7 @@ const ResultTableWithSteps = ({
                 const trackedForFailed = isRelValTrackedForFailed(data);
 
                 return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                     {stepsToShow.map((step, idx) => {
                       const stepNumber = steps.length - (isExpanded ? steps.length - idx - 1 : 0);
                       const { status, errors = 0, warnings = 0 } = step;
@@ -757,7 +757,7 @@ const ResultTableWithSteps = ({
                           key={`filter-${header.id}`}
                           style={{
                             backgroundColor: "#f8fafc",
-                            padding: "8px 6px",
+                            padding: "4px 6px",
                             borderBottom: "1px solid #ddd",
                             verticalAlign: "top",
                           }}
@@ -778,13 +778,13 @@ const ResultTableWithSteps = ({
 
             <tbody>
               {page.map((row) => (
-                <tr key={row.id}>
+                <tr key={row.id} style={{ height: "30px" }} >
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
                       className="align-middle"
                       style={{
-                        padding: "8px 6px",
+                        padding: "2px 6px",
                         fontSize: UI_SIZES.tableFont,
                       }}
                     >
