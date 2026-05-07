@@ -19,15 +19,36 @@ const NAV_CONTROLS_ENUM = {
   SELECTED_FILTER_STATUS: "selectedFilterStatus"
 };
 
+const CenterPageLoader = ({ message }) => (
+  <div style={{
+    minHeight: 'calc(100vh - 120px)',
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingTop: 90,
+    textAlign: 'center'
+  }}>
+    <div>
+      <div className="spinner-border text-dark" role="status" style={{
+        width: 44,
+        height: 44
+      }}>
+        <span className="visually-hidden">Loading...</span>
+      </div>
+      <h6 style={{ marginTop: 18 }}>{message}</h6>
+      <p style={{
+        marginTop: 12,
+        color: '#8a97ad',
+        fontSize: 13
+      }}>
+        Please wait while RelVals data is being loaded
+      </p>
+    </div>
+  </div>
+);
+
 // ----- Helpers to preserve React16 query parsing behavior -----
 function normalizeSingleOrEmpty(val) {
-  // React16 behavior:
-  // - if missing => ""
-  // - if array => remove "", then:
-  //     len 0 => ""
-  //     len 1 => string
-  //     len >1 => array (can happen)
-  // - if string => string
   if (val == null) return "";
   if (typeof val === "string") return val;
 
@@ -42,8 +63,6 @@ function normalizeSingleOrEmpty(val) {
 }
 
 function normalizeMaybeArray(val) {
-  // For archs/flavors/status/filterStatus React16 accepted string or array.
-  // We keep what query-string returns (string|array|undefined), but normalize undefined to [] for TogglesShowRow.
   if (val == null) return [];
   if (Array.isArray(val)) return val;
   if (typeof val === "string") return [val];
@@ -57,24 +76,22 @@ const RelValLayout = () => {
 
   const [navigationHeight, setNavigationHeight] = useState(0);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [showNoMatching, setShowNoMatching] = useState(false);
 
   const { state, fetchQueData, isLoading } = useRelVal();
 
-  // Extract data for current queue
   const queData = state?.structure?.[params?.date]?.[params?.que] || {};
   const allArchs = queData?.allArchs || [];
   const allGPUs = queData?.allGPUs || [];
   const allOthers = queData?.allOthers || [];
   const allFlavors = queData?.flavors ? Object.keys(queData.flavors).sort().reverse() : [];
 
-  // -----------------------------
-  // Fetch data when params change
-  // -----------------------------
   useEffect(() => {
     let cancelled = false;
 
     const loadData = async () => {
       setDataLoaded(false);
+      setShowNoMatching(false);
       if (params?.date && params?.que) {
         await fetchQueData({ date: params.date, que: params.que });
         if (!cancelled) setDataLoaded(true);
@@ -85,9 +102,6 @@ const RelValLayout = () => {
     return () => { cancelled = true; };
   }, [params?.date, params?.que, fetchQueData]);
 
-  // -----------------------------
-  // Parse query params 
-  // -----------------------------
   const parsedQuery = useMemo(() => queryString.parse(location.search), [location.search]);
 
   let selectedArchs = useMemo(
@@ -110,7 +124,6 @@ const RelValLayout = () => {
     [parsedQuery]
   );
 
-  // special handling for GPUs/Others
   let selectedGPUs = useMemo(
     () => normalizeSingleOrEmpty(parsedQuery[NAV_CONTROLS_ENUM.SELECTED_GPUS]),
     [parsedQuery]
@@ -121,17 +134,12 @@ const RelValLayout = () => {
     [parsedQuery]
   );
 
-  // -----------------------------
-  // behavior: if URL has no query, set defaults
-  // Only do this once data is available.
-  // -----------------------------
   useEffect(() => {
     if (!params?.date || !params?.que) return;
     if (!queData || Object.keys(queData).length === 0) return;
 
-    // did this when location.search === ""
     if (location.search === "") {
-      const newLoc = { ...location }; // partiallyUpdateLocationQuery mutates
+      const newLoc = { ...location };
       partiallyUpdateLocationQuery(newLoc, NAV_CONTROLS_ENUM.SELECTED_ARCHS, allArchs);
       partiallyUpdateLocationQuery(newLoc, NAV_CONTROLS_ENUM.SELECTED_GPUS, allGPUs);
       partiallyUpdateLocationQuery(newLoc, NAV_CONTROLS_ENUM.SELECTED_OTHERS, allOthers);
@@ -155,10 +163,9 @@ const RelValLayout = () => {
     allFlavors
   ]);
 
-  // -----------------------------
-  // Update URL helper 
-  // -----------------------------
   const updateUrlParam = useCallback((param, values) => {
+    setShowNoMatching(false);
+
     const newLocation = partiallyUpdateLocationQuery(location, param, values);
     goToLinkWithoutHistoryUpdate(
       navigate,
@@ -166,9 +173,6 @@ const RelValLayout = () => {
     );
   }, [location, navigate]);
 
-  // -----------------------------
-  // Controls 
-  // -----------------------------
   const controlList = useMemo(() => ([
     <TogglesShowRow
       key="flavors"
@@ -230,9 +234,6 @@ const RelValLayout = () => {
     updateUrlParam
   ]);
 
-  // -----------------------------
-  // Filter RelVals 
-  // -----------------------------
   const filteredData = useMemo(() => {
     if (!queData || Object.keys(queData).length === 0) return [];
 
@@ -246,9 +247,26 @@ const RelValLayout = () => {
     });
   }, [queData, selectedArchs, selectedGPUs, selectedOthers, selectedFlavors, selectedStatus]);
 
-  // -----------------------------
-  // Navigation height
-  // -----------------------------
+  useEffect(() => {
+    setShowNoMatching(false);
+
+    if (isLoading || !dataLoaded) return;
+    if (!queData || Object.keys(queData).length === 0) return;
+    if (filteredData.length > 0) return;
+
+    const timer = setTimeout(() => {
+      setShowNoMatching(true);
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [
+    isLoading,
+    dataLoaded,
+    queData,
+    filteredData,
+    location.search
+  ]);
+
   const getNavigationHeight = useCallback(() => {
     const nav = document.getElementById('relval-navigation');
     if (nav) setNavigationHeight(nav.clientHeight);
@@ -263,7 +281,6 @@ const RelValLayout = () => {
   const getTopPadding = () => navigationHeight + 20;
   const getSizeForTable = () => document.documentElement.clientHeight - getTopPadding() - 20;
 
-  // Result table props
   const resultTableWithStepsSettings = useMemo(() => ({
     style: { height: getSizeForTable(), overflow: 'auto' },
     allArchs,
@@ -297,25 +314,12 @@ const RelValLayout = () => {
     filteredData
   ]);
 
-  // Loading state
   if (isLoading && !dataLoaded) {
     return (
-      <div style={{
-        paddingTop: getTopPadding(),
-        paddingLeft: 0,
-        paddingRight: 0,
-        paddingBottom: 50,
-        textAlign: 'center'
-      }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-        <p style={{ marginTop: 20 }}>Loading RelVal data...</p>
-      </div>
+      <CenterPageLoader message={`Loading ${params.que} RelVals...`} />
     );
   }
 
-  // No data state
   if (!queData || Object.keys(queData).length === 0) {
     return (
       <div style={{
@@ -349,20 +353,30 @@ const RelValLayout = () => {
 
       {filteredData.length > 0 ? (
         <ResultTableWithSteps {...resultTableWithStepsSettings} />
-      ) : (
+      ) : showNoMatching ? (
         <div style={{
-          textAlign: 'center',
-          paddingTop: 40,
-          paddingBottom: 40,
-          paddingLeft: 20,
-          paddingRight: 20,
-          background: '#f8f9fa',
-          margin: '20px',
-          borderRadius: '8px'
+          minHeight: getSizeForTable(),
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center'
         }}>
-          <h5>No matching information found</h5>
-          <p>Try adjusting your filters</p>
+          <div style={{
+            width: 'calc(100% - 40px)',
+            paddingTop: 40,
+            paddingBottom: 40,
+            paddingLeft: 20,
+            paddingRight: 20,
+            background: '#f8f9fa',
+            margin: '20px',
+            borderRadius: '8px'
+          }}>
+            <h5>No matching information found</h5>
+            <p>Try adjusting your filters</p>
+          </div>
         </div>
+      ) : (
+        <CenterPageLoader message={`Loading ${params.que} RelVals...`} />
       )}
     </div>
   );
