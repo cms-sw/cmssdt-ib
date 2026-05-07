@@ -41,7 +41,7 @@ const CenterPageLoader = ({ message }) => (
         color: '#8a97ad',
         fontSize: 13
       }}>
-        Please wait while RelVals data is being loaded
+        Please wait while release data is being loaded
       </p>
     </div>
   </div>
@@ -77,6 +77,7 @@ const RelValLayout = () => {
   const [navigationHeight, setNavigationHeight] = useState(0);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [showNoMatching, setShowNoMatching] = useState(false);
+  const [userChangedFilters, setUserChangedFilters] = useState(false);
 
   const { state, fetchQueData, isLoading } = useRelVal();
 
@@ -92,6 +93,7 @@ const RelValLayout = () => {
     const loadData = async () => {
       setDataLoaded(false);
       setShowNoMatching(false);
+      setUserChangedFilters(false);
       if (params?.date && params?.que) {
         await fetchQueData({ date: params.date, que: params.que });
         if (!cancelled) setDataLoaded(true);
@@ -250,16 +252,18 @@ const RelValLayout = () => {
   useEffect(() => {
     setShowNoMatching(false);
 
+    if (!userChangedFilters) return;
     if (isLoading || !dataLoaded) return;
     if (!queData || Object.keys(queData).length === 0) return;
     if (filteredData.length > 0) return;
 
     const timer = setTimeout(() => {
       setShowNoMatching(true);
-    }, 1200);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [
+    userChangedFilters,
     isLoading,
     dataLoaded,
     queData,
@@ -267,6 +271,9 @@ const RelValLayout = () => {
     location.search
   ]);
 
+  // -----------------------------
+  // Navigation height
+  // -----------------------------
   const getNavigationHeight = useCallback(() => {
     const nav = document.getElementById('relval-navigation');
     if (nav) setNavigationHeight(nav.clientHeight);
@@ -343,13 +350,18 @@ const RelValLayout = () => {
       paddingBottom: 20,
       width: '100%'
     }}>
-      <RelValNavigation
-        id="relval-navigation"
-        que={params.que}
-        relvalInfo={`${params.que}_X_${params.date}`}
-        controlList={controlList}
-        onHeightChange={setNavigationHeight}
-      />
+      <div
+        onMouseDownCapture={() => setUserChangedFilters(true)}
+        onKeyDownCapture={() => setUserChangedFilters(true)}
+      >
+        <RelValNavigation
+          id="relval-navigation"
+          que={params.que}
+          relvalInfo={`${params.que}_X_${params.date}`}
+          controlList={controlList}
+          onHeightChange={setNavigationHeight}
+        />
+      </div>
 
       {filteredData.length > 0 ? (
         <ResultTableWithSteps {...resultTableWithStepsSettings} />
