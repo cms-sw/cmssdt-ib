@@ -13,7 +13,8 @@ const { urls } = config;
 /** Keep IB JSON fresh for 15 minutes */
 const IB_MEMORY_TTL_MS = 15 * 60 * 1000;
 const ibDataCache = {};
-
+/** Preference setting for users for opened/Cloed PR's */
+const PR_PREF_KEY = "cms_ib_show_all_prs";
 function isFreshCache(entry, ttlMs) {
     if (!entry || !entry.cachedAt) return false;
     return Date.now() - entry.cachedAt < ttlMs;
@@ -46,15 +47,21 @@ class IBLayout extends Component {
             error: null,
             isUnauthorized: false,
             isNetworkError: false,
-            showAllPullRequests: false
+            //showAllPullRequests: true
+            showAllPullRequests: localStorage.getItem(PR_PREF_KEY) === null ?  true : localStorage.getItem(PR_PREF_KEY) === "true"            
         };
     }
     toggleAllPullRequests = () => {
-        this.setState((prevState) => ({
-            showAllPullRequests: !prevState.showAllPullRequests
-        }));
-    };
+        this.setState((prevState) => {
+            const next = !prevState.showAllPullRequests;
+            localStorage.setItem(PR_PREF_KEY, String(next));  
 
+            return {
+                showAllPullRequests: next
+            };
+        });
+    };
+    
     componentDidMount() {
         this._isMounted = true;
         this.updateState(this.props);

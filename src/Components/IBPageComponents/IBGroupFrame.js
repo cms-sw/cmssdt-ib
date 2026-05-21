@@ -325,6 +325,7 @@ class IBGroupFrame extends PureComponent {
                                 }}
                                 data={IBGroup}
                                 expandAllCommits={true}
+                                targetPrNumber={this.props.targetPrNumber}
                             />
                         )}
                     </Card.Body>

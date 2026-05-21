@@ -67,7 +67,7 @@ class IBGroups extends Component {
     static defaultProps = {
         data: [],
         activeArchs: { os: [], cpu: [], compiler: [] },
-        showAllPullRequests: false,
+        showAllPullRequests: true,
         loading: false,
         error: null,
         isUnauthorized: false,
@@ -79,16 +79,21 @@ class IBGroups extends Component {
         super(props);
 
         this.groupRefs = {};
+        this.prSearchInput = '';
 
-        this.state = {
-            originalData: props.data || [],
-            transformedData: groupAndTransformIBDataList(props.data || []),
-            releaseQue: props.releaseQue,
-            activeArchs: props.activeArchs || { os: [], cpu: [], compiler: [] },
-            activeArchsSignature: getArchStateSignature(props.activeArchs || { os: [], cpu: [], compiler: [] }),
-            showNavigator: false,
-            collapsedGroups: {}
-        };
+     this.state = {
+        originalData: props.data || [],
+        transformedData: groupAndTransformIBDataList(props.data || []),
+        releaseQue: props.releaseQue,
+        activeArchs: props.activeArchs || { os: [], cpu: [], compiler: [] },
+        activeArchsSignature: getArchStateSignature(props.activeArchs || { os: [], cpu: [], compiler: [] }),
+        showNavigator: false,
+        collapsedGroups: {},
+        prSearchQuery: '',
+        prSearchError: '',
+        matchedPrGroupKey: null,
+        searchedPrNumber: ''
+    };
     }
 
     toggleGroupCollapse = (groupKey) => {
@@ -147,7 +152,8 @@ class IBGroups extends Component {
 
     toggleNavigator = () => {
         this.setState((prevState) => ({
-            showNavigator: !prevState.showNavigator
+            showNavigator: !prevState.showNavigator,
+            prSearchError: ''
         }));
     };
 
@@ -161,12 +167,74 @@ class IBGroups extends Component {
 
     scrollToGroup = (groupKey) => {
         const el = this.groupRefs[groupKey];
+
         if (el) {
             const yOffset = -70;
             const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
             window.scrollTo({ top: y, behavior: 'smooth' });
             this.setState({ showNavigator: false });
         }
+    };
+
+   findPrInGroups = () => {
+        //const query = String(this.state.prSearchQuery || '').trim().replace('#', '');
+        const query = String(this.prSearchInput || this.state.prSearchQuery || '').trim().replace('#', '');
+
+        if (!query) {
+            this.setState({ prSearchError: 'Enter a PR number' });
+            return;
+        }
+
+        const groups = this.getFilteredData();
+
+        for (let index = groups.length - 1; index >= 0; index--) {
+            const group = groups[index];
+
+            const found = group.some((item) => {
+                const cmsswPrs = Array.isArray(item.merged_prs)
+                    ? item.merged_prs
+                    : [];
+
+                const cmsdistPrs = item.cmsdist_merged_prs
+                    ? Object.values(item.cmsdist_merged_prs).flat()
+                    : [];
+
+                return [...cmsswPrs, ...cmsdistPrs].some(
+                    (pr) => String(pr?.number) === query
+                );
+            });
+
+            if (found) {
+                const groupKey = this.getGroupKey(group, index);
+
+                this.setState(
+                    (prevState) => ({
+                        showNavigator: false,
+                        prSearchQuery: query,
+                        prSearchError: '',
+                        matchedPrGroupKey: groupKey,
+                        searchedPrNumber: query,
+                        collapsedGroups: {
+                            ...prevState.collapsedGroups,
+                            [groupKey]: false
+                        }
+                    }),
+                    () => {
+                        setTimeout(() => {
+                            this.scrollToGroup(groupKey);
+                        }, 250);
+                    }
+                );
+
+                return;
+            }
+        }
+
+        this.setState({
+            prSearchError: `PR #${query} not found`,
+            matchedPrGroupKey: null,
+            searchedPrNumber: ''
+        });
     };
 
     filterIBItem = (item) => {
@@ -371,7 +439,7 @@ class IBGroups extends Component {
             >
                 <button
                     onClick={this.toggleAllReleasePanels}
-                    title={allCollapsed ? "Show all releases" : "Hide all releases"}
+                    title={allCollapsed ? 'Show all releases' : 'Hide all releases'}
                     style={miniToolButtonStyle}
                 >
                     {allCollapsed ? <FaEye size={12} /> : <FaEyeSlash size={12} />}
@@ -393,7 +461,7 @@ class IBGroups extends Component {
     }
 
     renderNavigator(groups) {
-        const { showNavigator } = this.state;
+        const { showNavigator, prSearchQuery, prSearchError } = this.state;
 
         if (!showNavigator) return null;
 
@@ -410,6 +478,39 @@ class IBGroups extends Component {
                         <button onClick={this.toggleNavigator} title="Close" style={closeNavigatorButtonStyle}>
                             <FaTimes size={12} />
                         </button>
+                    </div>
+
+                    <div style={navigatorSearchWrapStyle}>
+                        <input
+                            type="text"
+                            defaultValue={prSearchQuery}
+                            placeholder="Search PR #"
+                            // onChange={(e) =>
+                            //     this.setState({
+                            //         prSearchQuery: e.target.value,
+                            //         prSearchError: ''
+                            //     })
+                            onChange={(e) => {
+                                this.prSearchInput = e.target.value;
+                            }}
+                            
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    this.findPrInGroups();
+                                }
+                            }}
+                            style={navigatorSearchInputStyle}
+                        />
+
+                        <button onClick={this.findPrInGroups} style={navigatorSearchButtonStyle}>
+                            Search PR
+                        </button>
+
+                        {prSearchError && (
+                            <div style={navigatorSearchErrorStyle}>
+                                {prSearchError}
+                            </div>
+                        )}
                     </div>
 
                     <div style={navigatorListStyle}>
@@ -519,11 +620,20 @@ class IBGroups extends Component {
                                 }
                             }}
                         >
-                            <IBGroupFrame
+                           <IBGroupFrame
                                 IBGroup={IBGroup}
                                 releaseQue={releaseQue}
-                                expandAllCommits={showAllPullRequests}
-                                showPullRequests={showAllPullRequests}
+                                expandAllCommits={
+                                    showAllPullRequests || this.state.matchedPrGroupKey === groupKey
+                                }
+                                showPullRequests={
+                                    showAllPullRequests || this.state.matchedPrGroupKey === groupKey
+                                }
+                                targetPrNumber={
+                                    this.state.matchedPrGroupKey === groupKey
+                                        ? this.state.searchedPrNumber
+                                        : ''
+                                }
                                 isCollapsed={isCollapsed}
                                 onToggleCollapse={() => this.toggleGroupCollapse(groupKey)}
                             />
@@ -605,8 +715,44 @@ const closeNavigatorButtonStyle = {
     justifyContent: 'center'
 };
 
+const navigatorSearchWrapStyle = {
+    padding: '10px',
+    borderBottom: '1px solid #e5e7eb',
+    background: '#ffffff'
+};
+
+const navigatorSearchInputStyle = {
+    width: '100%',
+    height: '34px',
+    border: '1px solid #cbd5e1',
+    borderRadius: '8px',
+    padding: '0 10px',
+    fontSize: '0.82rem',
+    marginBottom: '8px',
+    outline: 'none'
+};
+
+const navigatorSearchButtonStyle = {
+    width: '100%',
+    height: '32px',
+    border: '1px solid #2563eb',
+    borderRadius: '8px',
+    background: '#2563eb',
+    color: '#ffffff',
+    fontWeight: 700,
+    fontSize: '0.82rem',
+    cursor: 'pointer'
+};
+
+const navigatorSearchErrorStyle = {
+    marginTop: '8px',
+    color: '#dc2626',
+    fontSize: '0.78rem',
+    fontWeight: 600
+};
+
 const navigatorListStyle = {
-    maxHeight: 'calc(70vh - 50px)',
+    maxHeight: 'calc(70vh - 142px)',
     overflowY: 'auto',
     padding: '10px'
 };
