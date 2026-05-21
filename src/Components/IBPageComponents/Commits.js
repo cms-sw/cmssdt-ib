@@ -13,7 +13,9 @@ import {
   Button,
   Modal,
   Spinner,
-  Alert
+  Alert,
+  OverlayTrigger,
+  Popover
 } from "react-bootstrap";
 import {
   getCurrentIbTag,
@@ -38,6 +40,7 @@ import {
   FaSearch,
   FaEye
 } from "react-icons/fa";
+import { FaCodeCompare } from "react-icons/fa6";
 
 const { githubCompareTags, githubRepo, githubRepoTag } = config.urls;
 
@@ -222,13 +225,9 @@ const styles = {
     transition: "background 0.15s ease"
   },
   prRowWrap: {
-    border: `1px solid ${THEME.border}`,
-    borderRadius: "10px",
-    background: THEME.surface,
-    marginBottom: "8px",
-    padding: "10px 12px",
+    padding: "6px 10px",
     transition:
-      "background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease"
+      "background-color 0.12s ease, border-color 0.12s ease",
   },
   prRowTop: {
     display: "flex",
@@ -238,9 +237,9 @@ const styles = {
     minWidth: 0
   },
   prRowMeta: {
-    color: THEME.text.muted,
-    fontSize: "0.78rem",
-    whiteSpace: "nowrap"
+    
+    fontSize: "0.78rem"
+   
   },
   prRowTitle: {
     color: THEME.text.primary,
@@ -286,7 +285,20 @@ const styles = {
     padding: "8px",
     textAlign: "center",
     height: "100%"
-  }
+  },
+  compactDropdownToggle: {
+    backgroundColor: THEME.surface,
+    color: THEME.text.primary,
+    border: `1px solid ${THEME.borderDark}`,
+    borderBottom: `1px solid ${THEME.surface}`,
+    borderRadius: "7px 7px 0 0",
+    padding: "0.32rem 0.65rem",
+    fontWeight: 800,
+    fontSize: "0.75rem",
+    minHeight: "30px",
+    display: "flex",
+    alignItems: "center"
+  },
 };
 
 function truncateTitle(text, max = 90) {
@@ -969,7 +981,8 @@ function renderCommits(
   cmsswLabelsMap,
   onOpenPreview,
   previewLoadingPrNumber,
-  seriesKey
+  seriesKey,
+  targetPrNumber,
 ) {
   if (!isExpanded) return null;
 
@@ -1011,14 +1024,17 @@ function renderCommits(
             fontSize: "0.95rem"
           }}
         >
-          <FaGitAlt className="me-2" style={{ color: THEME.primary }} size={14} />
+          {/* <FaGitAlt className="me-2" style={{ color: THEME.primary }} size={14} />
           Pull Requests
-          <span style={{ ...styles.pill, marginLeft: 8 }}>{sortedPrs.length} total</span>
+          <span style={{ ...styles.pill, marginLeft: 8 }}>{sortedPrs.length} total</span> */}
         </h6>
       </div>
-
       <div className="px-2 pb-2">
-        {sortedPrs.map((pr) => {
+        {sortedPrs.map((pr, index) => {
+          const baseBg = index % 2 === 0 ? THEME.surface : THEME.surfaceMuted;
+          const isMatchedPr =
+            targetPrNumber &&
+            String(pr.number) === String(targetPrNumber);
           const isThisPreviewLoading =
             previewLoadingPrNumber !== null &&
             String(previewLoadingPrNumber) === String(pr.number);
@@ -1026,16 +1042,37 @@ function renderCommits(
           return (
             <div
               key={`${repo}-pr-${pr.number}`}
-              style={styles.prRowWrap}
+              data-target-pr={isMatchedPr ? String(pr.number) : undefined}
+              style={{
+                ...styles.prRowWrap,
+                backgroundColor: isMatchedPr ? "#dbeafe" : baseBg,
+                borderLeft: isMatchedPr
+                  ? "4px solid #2563eb"
+                  : "4px solid transparent",
+                borderRadius: "0px",
+                marginBottom: "0px",
+                borderBottom: `1px solid ${THEME.border}`,
+                boxShadow: isMatchedPr
+                  ? "0 0 0 2px rgba(37, 99, 235, 0.18)"
+                  : "none"
+              }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = THEME.surfaceMuted;
+                e.currentTarget.style.backgroundColor = isMatchedPr
+                  ? "#bfdbfe"
+                  : THEME.surfaceMuted2;
                 e.currentTarget.style.borderColor = THEME.borderDark;
-                e.currentTarget.style.boxShadow = "0 8px 18px rgba(15, 23, 42, 0.06)";
+                e.currentTarget.style.boxShadow = isMatchedPr
+                  ? "0 0 0 2px rgba(37, 99, 235, 0.25)"
+                  : "0 8px 18px rgba(15, 23, 42, 0.06)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = THEME.surface;
+                e.currentTarget.style.backgroundColor = isMatchedPr
+                  ? "#dbeafe"
+                  : baseBg;
                 e.currentTarget.style.borderColor = THEME.border;
-                e.currentTarget.style.boxShadow = "none";
+                e.currentTarget.style.boxShadow = isMatchedPr
+                  ? "0 0 0 2px rgba(37, 99, 235, 0.18)"
+                  : "none";
               }}
             >
               <div className="d-flex flex-column gap-2">
@@ -1159,17 +1196,17 @@ class Commits extends Component {
     };
   }
 
-  static getDerivedStateFromProps(nextProps, prevState) {
-    if (nextProps.data !== prevState.ibComparison) {
-      return {
-        ibComparison: nextProps.data || [],
-        commitPanelProps: nextProps.commitPanelProps || {},
-        activeTabKey: "cmssw-0",
-        cmsdistSearch: prevState.cmsdistSearch
-      };
-    }
-    return null;
+static getDerivedStateFromProps(nextProps, prevState) {
+  if (nextProps.data !== prevState.ibComparison) {
+    return {
+      ibComparison: nextProps.data || [],
+      commitPanelProps: nextProps.commitPanelProps || {},
+      activeTabKey: prevState.activeTabKey || "cmssw-0",
+      cmsdistSearch: prevState.cmsdistSearch
+    };
   }
+  return null;
+}
 
   componentDidMount() {
     this._isMounted = true;
@@ -1184,22 +1221,32 @@ class Commits extends Component {
     };
 
     document.addEventListener("visibilitychange", this.visibilityHandler);
+    this.activateTargetPr();
   }
 
-  componentDidUpdate(prevProps) {
-    if (prevProps.data !== this.props.data && this.state.expanded) {
-      this.loadPrJsonForActiveTab(this.state.activeTabKey);
-    }
-
-    if (prevProps.expandAllCommits !== this.props.expandAllCommits) {
-      this.startToggleLoader();
-      this.setState({ expanded: this.props.expandAllCommits }, () => {
-        if (this.state.expanded) {
-          this.loadPrJsonForActiveTab(this.state.activeTabKey);
-        }
-      });
-    }
+ componentDidUpdate(prevProps) {
+  if (prevProps.data !== this.props.data && this.state.expanded) {
+    this.loadPrJsonForActiveTab(this.state.activeTabKey);
   }
+
+  if (prevProps.expandAllCommits !== this.props.expandAllCommits) {
+    this.startToggleLoader();
+    this.setState({ expanded: this.props.expandAllCommits }, () => {
+      if (this.state.expanded) {
+        this.loadPrJsonForActiveTab(this.state.activeTabKey);
+      }
+
+      this.activateTargetPr();
+    });
+  }
+
+  if (
+    this.props.targetPrNumber &&
+    this.props.targetPrNumber !== prevProps.targetPrNumber
+  ) {
+    this.activateTargetPr();
+  }
+}
 
   componentWillUnmount() {
     this._isMounted = false;
@@ -1223,7 +1270,42 @@ class Commits extends Component {
       }
     }, 250);
   };
+findTabKeyForPr = (targetPrNumber) => {
+  const { ibComparison } = this.state;
+  const query = String(targetPrNumber || "").trim();
 
+  if (!query || !Array.isArray(ibComparison)) return null;
+
+  for (let pos = 0; pos < ibComparison.length; pos++) {
+    const ib = ibComparison[pos];
+
+    if (Array.isArray(ib.merged_prs)) {
+      const foundCmssw = ib.merged_prs.some(
+        (pr) => String(pr?.number) === query
+      );
+
+      if (foundCmssw) {
+        return `cmssw-${pos}`;
+      }
+    }
+
+    if (ib.cmsdist_merged_prs && typeof ib.cmsdist_merged_prs === "object") {
+      for (const [arch, prList] of Object.entries(ib.cmsdist_merged_prs)) {
+        if (!Array.isArray(prList)) continue;
+
+        const foundCmsdist = prList.some(
+          (pr) => String(pr?.number) === query
+        );
+
+        if (foundCmsdist) {
+          return `cmsdist-${pos}-${arch}`;
+        }
+      }
+    }
+  }
+
+  return null;
+};
   getSeriesKeyForTab = (tabKey) => {
     const { ibComparison } = this.state;
     if (!Array.isArray(ibComparison) || ibComparison.length === 0) return null;
@@ -1390,6 +1472,36 @@ class Commits extends Component {
       return null;
     }
   };
+activateTargetPr = () => {
+  if (!this.props.targetPrNumber) return;
+
+  const tabKey = this.findTabKeyForPr(this.props.targetPrNumber);
+
+  if (!tabKey) return;
+
+  this.setState(
+    {
+      expanded: true,
+      activeTabKey: tabKey
+    },
+    () => {
+      this.loadPrJsonForActiveTab(tabKey);
+
+      setTimeout(() => {
+        const el = document.querySelector(
+          `[data-target-pr="${this.props.targetPrNumber}"]`
+        );
+
+        if (el) {
+          el.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+          });
+        }
+      }, 1000);
+    }
+  );
+};
 
   loadCmsswLabels = async () => {
     if (isFreshCache(globalCmsswLabelsCache, LABELS_MEMORY_TTL_MS)) {
@@ -1612,6 +1724,7 @@ class Commits extends Component {
     const cmsswTabPaneList = [];
     const cmsDistAllItems = [];
     const cmsDistTabPaneList = [];
+    const compareInfoMap = {};
 
     if (!Array.isArray(ibComparison) || ibComparison.length === 0) {
       return (
@@ -1674,6 +1787,13 @@ class Commits extends Component {
 
       const cmsswTabKey = `cmssw-${pos}`;
 
+      compareInfoMap[cmsswTabKey] = {
+        repoName: "CMSSW",
+        startTag: previousTag,
+        endTag: currentTag,
+        url: githubCompareTags("cms-sw/cmssw", previousTag, currentTag)
+      };
+
       cmsswTabList.push(
         <Nav.Item key={`cmssw-tab-${ib.release_queue || "unknown"}-${pos}`}>
           <Nav.Link
@@ -1691,7 +1811,7 @@ class Commits extends Component {
           eventKey={cmsswTabKey}
           style={styles.tabPane}
         >
-          {renderComparisonLink("cms-sw/cmssw", previousTag, currentTag)}
+          {/* {renderComparisonLink("cms-sw/cmssw", previousTag, currentTag)} */}
           {renderCommits(
             ib.merged_prs,
             previousTag,
@@ -1701,7 +1821,8 @@ class Commits extends Component {
             cmsswLabelsMap,
             this.openPreviewModal,
             previewLoadingPrNumber,
-            seriesKey
+            seriesKey,
+            this.props.targetPrNumber
           )}
         </Tab.Pane>
       );
@@ -1717,6 +1838,13 @@ class Commits extends Component {
           const [prevTag, nextTag] =
             ib.cmsdist_compared_tags?.[arch]?.split("..") || [];
           if (!prevTag || !nextTag) return;
+
+          compareInfoMap[tabKey] = {
+            repoName: "CMSDIST",
+            startTag: prevTag,
+            endTag: nextTag,
+            url: githubCompareTags("cms-sw/cmsdist", prevTag, nextTag)
+          };
 
           cmsDistAllItems.push(
             <NavDropdown.Item
@@ -1756,7 +1884,7 @@ class Commits extends Component {
               eventKey={tabKey}
               style={styles.tabPane}
             >
-              {renderComparisonLink("cms-sw/cmsdist", prevTag, nextTag)}
+              {/* {renderComparisonLink("cms-sw/cmsdist", prevTag, nextTag)} */}
               {renderCommits(
                 prListByArch,
                 prevTag,
@@ -1766,7 +1894,8 @@ class Commits extends Component {
                 cmsswLabelsMap,
                 this.openPreviewModal,
                 previewLoadingPrNumber,
-                seriesKey
+                seriesKey,
+                this.props.targetPrNumber
               )}
             </Tab.Pane>
           );
@@ -1783,11 +1912,13 @@ class Commits extends Component {
         });
 
     const hasAnyCmsDist = cmsDistAllItems.length > 0;
+    
+    const activeCompareInfo = compareInfoMap[activeTabKey] || null;
 
     return (
       <>
         <Card style={styles.card}>
-          <Card.Header
+          {/* <Card.Header
             style={styles.cardHeader}
             onClick={this.toggleExpand}
             onMouseEnter={(e) =>
@@ -1808,7 +1939,7 @@ class Commits extends Component {
               <span>{expanded ? "Hide" : "Show"}</span>
               {expanded ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
             </div>
-          </Card.Header>
+          </Card.Header> */}
 
           <Collapse in={expanded}>
             <Card.Body style={styles.cardBody}>
@@ -1820,24 +1951,17 @@ class Commits extends Component {
 
                       {hasAnyCmsDist && (
                         <NavDropdown
-                          title={
-                            <span
-                              className="d-flex align-items-center"
-                              style={{
-                                color: THEME.text.primary,
-                                fontSize: "0.85rem",
-                                fontWeight: 900
-                              }}
-                            >
-                              <FaGithub className="me-1" size={12} />
-                              CMS Dist
-                            </span>
-                          }
-                          id="cmsdist-dropdown"
-                          className="ms-2"
-                          menuVariant="light"
-                          renderMenuOnMount
-                        >
+                            title={
+                              <>
+                                <FaGithub className="me-1" size={9} />
+                                CMS Dist
+                              </>
+                            }
+                            id="cmsdist-dropdown"
+                            className="compact-dropdown-tab"
+                            menuVariant="light"
+                            renderMenuOnMount
+                          >
                           <div
                             style={styles.cmsdistSearchWrap}
                             onClick={(e) => e.stopPropagation()}
@@ -1875,6 +1999,138 @@ class Commits extends Component {
                           </div>
                         </NavDropdown>
                       )}
+                    {activeCompareInfo && (
+                      <OverlayTrigger
+                        placement="bottom"
+                        delay={{ show: 120, hide: 80 }}
+                        overlay={
+                          <Popover
+                            id="compare-popover"
+                            style={{
+                              border: "none",
+                              borderRadius: "14px",
+                              boxShadow: "0 14px 34px rgba(15, 23, 42, 0.18)",
+                              overflow: "hidden",
+                              minWidth: "320px"
+                            }}
+                          >
+                            <Popover.Body style={{ padding: 0 }}>
+                              <div
+                                style={{
+                                  padding: "12px 14px",
+                                  background: THEME.surfaceMuted,
+                                  borderBottom: `1px solid ${THEME.border}`
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    fontSize: "0.72rem",
+                                    fontWeight: 900,
+                                    color: THEME.text.muted,
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.04em"
+                                  }}
+                                >
+                                  Branch Compare
+                                </div>
+
+                                <div
+                                  style={{
+                                    marginTop: "4px",
+                                    fontSize: "0.9rem",
+                                    fontWeight: 900,
+                                    color: THEME.text.primary
+                                  }}
+                                >
+                                  {activeCompareInfo.repoName}
+                                </div>
+                              </div>
+
+                              <div style={{ padding: "14px" }}>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                    marginBottom: "10px",
+                                    color: THEME.text.secondary,
+                                    fontSize: "0.82rem",
+                                    fontWeight: 700
+                                  }}
+                                >
+                                  <FaCodeCompare size={20} style={{ color: THEME.primary }} />
+                                  Comparing branches
+                                </div>
+
+                                <div
+                                  style={{
+                                    background: THEME.surfaceMuted,
+                                    border: `1px solid ${THEME.border}`,
+                                    borderRadius: "10px",
+                                    padding: "10px",
+                                    display: "grid",
+                                    gap: "8px"
+                                  }}
+                                >
+                                  <code style={{ ...styles.tag, display: "block" }}>
+                                    {activeCompareInfo.startTag}
+                                  </code>
+
+                                  <div
+                                    style={{
+                                      textAlign: "center",
+                                      color: THEME.text.muted,
+                                      fontWeight: 900
+                                    }}
+                                  >
+                                    ↓
+                                  </div>
+
+                                  <code style={{ ...styles.tag, display: "block" }}>
+                                    {activeCompareInfo.endTag}
+                                  </code>
+                                </div>
+
+                                <div
+                                  style={{
+                                    marginTop: "10px",
+                                    fontSize: "0.76rem",
+                                    color: THEME.text.muted
+                                  }}
+                                >
+                                
+                                </div>
+                              </div>
+                            </Popover.Body>
+                          </Popover>
+                        }
+                      >
+                        <a
+                          href={activeCompareInfo.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="Open branch compare"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "32px",
+                            height: "30px",
+                            borderRadius: "9px",
+                            border: `1px solid ${THEME.borderDark}`,
+                            background:
+                              "linear-gradient(135deg, #eff6ff 0%, #ffffff 100%)",
+                            color: THEME.primary,
+                            textDecoration: "none",
+                            marginLeft: "4px",
+                            marginBottom: "2px",
+                            boxShadow: "0 2px 8px rgba(37, 99, 235, 0.12)"
+                          }}
+                        >
+                          <FaCodeCompare size={13} />
+                        </a>
+                      </OverlayTrigger>
+)}
                     </Nav>
                   </Col>
 
@@ -1899,13 +2155,15 @@ class Commits extends Component {
 Commits.propTypes = {
   commitPanelProps: PropTypes.object,
   data: PropTypes.array,
-  expandAllCommits: PropTypes.bool
+  expandAllCommits: PropTypes.bool,
+  targetPrNumber: PropTypes.string
 };
 
 Commits.defaultProps = {
   commitPanelProps: {},
   data: [],
-  expandAllCommits: false
+  expandAllCommits: false,
+  targetPrNumber: ""
 };
 
 export default Commits;

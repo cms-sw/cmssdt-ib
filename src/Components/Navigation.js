@@ -771,7 +771,7 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
                     </FloatingControlBadge>
                   }
                   title="Expand all commits & PRs"
-                  text="Open all commit and pull request sections at once. The same control can also collapse them again."
+                  text="Open or collapse all commits & pull request sections at once. Your last choice is saved in this browser and restored the next time you open the page."
                 />
               </div>
 
