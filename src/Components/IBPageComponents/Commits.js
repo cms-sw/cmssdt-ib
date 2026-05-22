@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import { GoGitPullRequest } from "react-icons/go";
+import { RiShareForwardLine } from "react-icons/ri";
 import PropTypes from "prop-types";
 import {
   Col,
@@ -298,7 +299,7 @@ const styles = {
     minHeight: "30px",
     display: "flex",
     alignItems: "center"
-  },
+  }
 };
 
 function truncateTitle(text, max = 90) {
@@ -472,18 +473,31 @@ function enrichMergedPrs(mergedPrs, repo, prJsonData) {
 function isFromMergedCommit(pr) {
   if (pr.from_merge_commit === true) {
     return (
-      <Badge
-        bg="warning"
-        className="ms-1"
-        style={styles.badge}
-        title="From merged commit"
+       <span
+        title="Forwad port"
+        style={{
+          width: "22px",
+          height: "22px",
+          borderRadius: "999px",
+          background: "#0ea5e9",
+          color: "#ffffff",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginLeft: "6px",
+          boxShadow: "0 2px 6px rgba(14, 165, 233, 0.25)",
+          flexShrink: 0
+        }}
       >
-        <FaCodeBranch className="me-1" size={8} />
-        Merged
-      </Badge>
+        <RiShareForwardLine size={13} />
+      </span>
     );
   }
   return null;
+}
+
+function hasPrs(prList) {
+  return Array.isArray(prList) && prList.length > 0;
 }
 
 function renderComparisonLink(repo, startTag, endTag) {
@@ -527,10 +541,10 @@ function renderComparisonLink(repo, startTag, endTag) {
           textDecoration: "none"
         }}
         onMouseEnter={(e) =>
-          (e.currentTarget.style.backgroundColor = THEME.primaryHover)
+          (e.currentTarget.style.backgroundColor = THEME.surfaceMuted2)
         }
         onMouseLeave={(e) =>
-          (e.currentTarget.style.backgroundColor = THEME.primary)
+          (e.currentTarget.style.backgroundColor = "transparent")
         }
       >
         Diff
@@ -1856,7 +1870,13 @@ activateTargetPr = () => {
         <Nav.Item key={`cmssw-tab-${ib.release_queue || "unknown"}-${pos}`}>
           <Nav.Link
             eventKey={cmsswTabKey}
-            style={styles.tabLink(activeTabKey === cmsswTabKey)}
+           style={{
+              ...styles.tabLink(activeTabKey === cmsswTabKey),
+              color: hasPrs(ib.merged_prs)
+                ? "#2563eb"
+                : styles.tabLink(activeTabKey === cmsswTabKey).color,
+              fontWeight: hasPrs(ib.merged_prs) ? 900 : 800
+            }}
           >
             {getDisplayName(ib.release_queue)}
           </Nav.Link>
@@ -1909,8 +1929,9 @@ activateTargetPr = () => {
               key={`cmsdist-item-${displayName}-${arch}`}
               eventKey={tabKey}
               className="d-flex align-items-center"
-              style={styles.cmsdistItem}
+              style={ styles.cmsdistItem }
               data-search={`${displayName} ${arch}`.toLowerCase()}
+              data-has-prs={hasPrs(prListByArch) ? "true" : "false"}
               onMouseEnter={(e) =>
                 (e.currentTarget.style.backgroundColor = THEME.surfaceMuted2)
               }
@@ -1920,17 +1941,23 @@ activateTargetPr = () => {
             >
               <FaCodeBranch
                 className="me-2"
-                style={{ color: THEME.text.muted }}
+                style={{ color: hasPrs(prListByArch) ? "#2563eb" : THEME.text.muted }}
                 size={12}
               />
               <span
                 className="fw-semibold"
-                style={{ color: THEME.text.primary }}
+                style={{ color: hasPrs(prListByArch) ? "#2563eb" : THEME.text.primary }}
               >
                 {displayName}
               </span>
               <span className="text-muted mx-2">•</span>
-              <code style={{ ...styles.tag, padding: "0.1rem 0.45rem" }}>
+              <code style={{
+                ...styles.tag,
+                padding: "0.1rem 0.45rem",
+                color: hasPrs(prListByArch) ? "#2563eb" : THEME.text.primary,
+                fontWeight: hasPrs(prListByArch) ? 800 : 600
+                }}
+              >
                 {arch}
               </code>
             </NavDropdown.Item>
@@ -1968,7 +1995,7 @@ activateTargetPr = () => {
           const hay = node?.props?.["data-search"] || "";
           return hay.includes(needle);
         });
-
+    const hasCmsDistPrs = cmsDistAllItems.some((item) => item?.props?.["data-has-prs"] === "true");      
     const hasAnyCmsDist = cmsDistAllItems.length > 0;
     
     const activeCompareInfo = compareInfoMap[activeTabKey] || null;
@@ -2010,10 +2037,15 @@ activateTargetPr = () => {
                       {hasAnyCmsDist && (
                         <NavDropdown
                             title={
-                              <>
-                                <FaGithub className="me-1" size={9} />
-                                CMS Dist
-                              </>
+                                <span
+                                  style={{
+                                    color: hasCmsDistPrs ? "#2563eb" : THEME.text.primary,
+                                    fontWeight: hasCmsDistPrs ? 900 : 800
+                                  }}
+                                >
+                                  {/* <FaGithub className="me-1" size={9} /> */}
+                                  CMS Dist
+                                </span>
                             }
                             id="cmsdist-dropdown"
                             className="compact-dropdown-tab"

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, forwardRef } from "react";
+import { RiShareForwardLine } from "react-icons/ri";
 import {
   Navbar,
   Nav,
@@ -899,6 +900,23 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
                   }
                   title="Copy flavor"
                   text="The small copy icon in the flavor header copies the selected flavor name."
+                />
+              </div>
+              <div className="col-md-6">
+                <FloatingControlCard
+                  icon={
+                    <FloatingControlBadge
+                      bg="#0ea5e9"
+                      color="#ffffff"
+                      border="#bae6fd"
+                      size={34}
+                      className="guide-clickable-icon"
+                    >
+                      <RiShareForwardLine size={16} />
+                    </FloatingControlBadge>
+                  }
+                  title="Forward Port"
+                  text="Indicates the forwaded port branch."
                 />
               </div>
             </div>
