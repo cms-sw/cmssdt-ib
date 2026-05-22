@@ -989,26 +989,84 @@ function renderCommits(
   const enrichedPrs = enrichMergedPrs(mergedPrs, repo, prJsonData);
 
   if (!enrichedPrs || enrichedPrs.length === 0) {
-    return (
-      <div className="text-center py-4" style={{ color: THEME.text.muted }}>
-        <FaCodeBranch size={36} className="mb-2" style={{ opacity: 0.5 }} />
-        <p className="mb-1" style={{ fontSize: "0.9rem", fontWeight: 800 }}>
+   return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "14px",
+          padding: "8px 14px",
+          color: THEME.text.muted,
+          minHeight: "38px",
+          borderTop: `1px solid ${THEME.border}`,
+          borderBottom: `1px solid ${THEME.border}`,
+          overflowX: "auto",
+          whiteSpace: "nowrap"
+        }}
+      >
+        <GoGitPullRequest
+          size={16}
+          style={{
+            opacity: 0.5,
+            flexShrink: 0
+          }}
+        />
+
+        <span
+          style={{
+            fontSize: "0.84rem",
+            fontWeight: 800,
+            color: THEME.text.secondary,
+            flexShrink: 0
+          }}
+        >
           No pull requests found
-        </p>
-        <p className="mb-0" style={{ fontSize: "0.8rem" }}>
-          Compared to{" "}
-          <a
-            href={githubRepoTag(repo, previousIBTag)}
-            className="text-decoration-none"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: THEME.primary }}
+        </span>
+
+        <span
+          style={{
+            color: THEME.borderDark,
+            fontWeight: 700,
+            flexShrink: 0
+          }}
+        >
+          |
+        </span>
+
+        <span
+          style={{
+            fontSize: "0.78rem",
+            color: THEME.text.muted,
+            flexShrink: 0
+          }}
+        >
+          Compared to
+        </span>
+
+        <a
+          href={githubRepoTag(repo, previousIBTag)}
+          className="text-decoration-none"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            flexShrink: 0
+          }}
+        >
+          <code
+            style={{
+              ...styles.tag,
+              fontSize: "0.70rem",
+              padding: "2px 7px",
+              margin: 0
+            }}
           >
-            <code style={styles.tag}>{previousIBTag}</code>
-          </a>
-        </p>
+            {previousIBTag}
+          </code>
+        </a>
       </div>
     );
+    
   }
 
   const sortedPrs = [...enrichedPrs].sort((a, b) => (b.number || 0) - (a.number || 0));
@@ -1961,6 +2019,9 @@ activateTargetPr = () => {
                             className="compact-dropdown-tab"
                             menuVariant="light"
                             renderMenuOnMount
+                            popperConfig={{
+                              strategy: "fixed"
+                            }}
                           >
                           <div
                             style={styles.cmsdistSearchWrap}
