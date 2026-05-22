@@ -211,17 +211,16 @@
  /* CMSDIST dropdown above tab content */
 .compact-dropdown-tab {
   position: relative;
-  z-index: 10000;
+  z-index: 1040;
 }
 
 .compact-dropdown-tab .dropdown-menu {
-  z-index: 999999 !important;
+  z-index: 1040 !important;
   position: absolute !important;
 }
 
-/* id is on the toggle button, menu is its sibling */
 #cmsdist-dropdown + .dropdown-menu {
-  z-index: 999999 !important;
+  z-index: 1040 !important;
 }
 
 /* prevent clipping */

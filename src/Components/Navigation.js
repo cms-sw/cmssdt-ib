@@ -916,7 +916,7 @@ const Navigation = ({ toLinks, flaworControl, archControl, showAllPullRequests =
                     </FloatingControlBadge>
                   }
                   title="Forward Port"
-                  text="Indicates the forwaded port branch."
+                  text="Indicates forwad ported pull request."
                 />
               </div>
             </div>
