@@ -208,9 +208,30 @@
   }
  
 }
- /* ONLY CMSDIST dropdown menu */
-#cmsdist-dropdown .dropdown-menu {
+ /* CMSDIST dropdown above tab content */
+.compact-dropdown-tab {
+  position: relative;
+  z-index: 10000;
+}
+
+.compact-dropdown-tab .dropdown-menu {
   z-index: 999999 !important;
+  position: absolute !important;
+}
+
+/* id is on the toggle button, menu is its sibling */
+#cmsdist-dropdown + .dropdown-menu {
+  z-index: 999999 !important;
+}
+
+/* prevent clipping */
+.nav,
+.tab-content,
+.tab-pane,
+.card,
+.card-body,
+.collapse.show {
+  overflow: visible !important;
 }
 /* =========================
    PR Preview Popover 
