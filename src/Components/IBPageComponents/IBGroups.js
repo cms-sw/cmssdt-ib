@@ -231,7 +231,7 @@ class IBGroups extends Component {
         }
 
         this.setState({
-            prSearchError: `PR #${query} not found`,
+            prSearchError: `PR #${query} is not merged in available IBs of selected release cycle.It may have been merged into a different release cycle.`,
             matchedPrGroupKey: null,
             searchedPrNumber: ''
         });
