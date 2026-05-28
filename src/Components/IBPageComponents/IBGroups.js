@@ -231,9 +231,9 @@ class IBGroups extends Component {
         }
 
         this.setState({
-            prSearchError: `PR #${query} is not merged in available IBs of selected release cycle.It may have been merged into a different release cycle.`,
+            prSearchError: 'PR_NOT_FOUND',
             matchedPrGroupKey: null,
-            searchedPrNumber: ''
+            searchedPrNumber: query
         });
     };
 
@@ -461,7 +461,7 @@ class IBGroups extends Component {
     }
 
     renderNavigator(groups) {
-        const { showNavigator, prSearchQuery, prSearchError } = this.state;
+        const { showNavigator, prSearchQuery, prSearchError, searchedPrNumber } = this.state;
 
         if (!showNavigator) return null;
 
@@ -506,9 +506,16 @@ class IBGroups extends Component {
                             Search PR
                         </button>
 
-                        {prSearchError && (
+                        {prSearchError === 'PR_NOT_FOUND' && (
                             <div style={navigatorSearchErrorStyle}>
-                                {prSearchError}
+                                PR{' '}
+                                <span style={{ color: '#2563eb', fontWeight: 700 }}>
+                                    #<b>{searchedPrNumber}</b>
+                                </span>{' '}
+                                is not merged in available IBs of selected release cycle{' '}
+                                <span style={{ color: '#2563eb', fontWeight: 700 }}>
+                                    ({this.state.releaseQue})
+                                </span>
                             </div>
                         )}
                     </div>
@@ -684,7 +691,7 @@ const navigatorOverlayStyle = {
     position: 'fixed',
     top: '88px',
     right: '16px',
-    width: '260px',
+    width: '280px',
     maxHeight: '70vh',
     overflow: 'hidden',
     background: 'rgba(255,255,255,0.99)',
