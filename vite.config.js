@@ -1,25 +1,31 @@
-import { defineConfig, transformWithEsbuild } from "vite";
+import { defineConfig, transformWithOxc } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [
     {
       name: "treat-js-files-as-jsx",
+      enforce: "pre",
       async transform(code, id) {
         if (!id.match(/src\/.*\.js$/)) return null;
 
-        return transformWithEsbuild(code, id, {
-          loader: "jsx",
-          jsx: "automatic",
+        const result = await transformWithOxc(code, id, {
+          lang: "jsx",
         });
+
+        return {
+          code: result.code,
+          map: result.map,
+          moduleType: "js",
+        };
       },
     },
     react(),
   ],
 
   optimizeDeps: {
-    esbuildOptions: {
-      loader: {
+    rolldownOptions: {
+      moduleTypes: {
         ".js": "jsx",
       },
     },
