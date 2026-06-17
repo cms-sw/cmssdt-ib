@@ -286,7 +286,10 @@ const RelValLayout = () => {
   }, [getNavigationHeight, dataLoaded]);
 
   const getTopPadding = () => navigationHeight + 20;
-  const getSizeForTable = () => document.documentElement.clientHeight - getTopPadding() - 20;
+  const getSizeForTable = () =>
+    (window.visualViewport?.height || document.documentElement.clientHeight)
+    - getTopPadding()
+    - 20;
 
   const resultTableWithStepsSettings = useMemo(() => ({
     style: { height: getSizeForTable(), overflow: 'auto' },

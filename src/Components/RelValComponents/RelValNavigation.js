@@ -238,7 +238,7 @@ const RelValNavigation = ({
 
             {/* FILTERS AREA */}
             <div
-              className="w-100"
+              className={`w-100 relval-filters-container ${showFilters ? "show" : ""}`}
               style={{
                 maxHeight: showFilters ? "1000px" : "0",
                 overflow: "hidden",
@@ -528,6 +528,15 @@ const RelValNavigation = ({
       </Modal>
 
       <style>{`
+        @media (max-width: 768px) {
+          .relval-filters-container.show {
+            max-height: calc(100dvh - 170px - env(safe-area-inset-bottom)) !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+            -webkit-overflow-scrolling: touch;
+          }
+        }
         .legend-modal .modal-content {
           border: none;
           border-radius: 16px;
