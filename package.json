@@ -7,14 +7,14 @@
     "axios": "^1.6.0",
     "axios-cache-plugin": "^0.1.0",
     "bootstrap": "^5.3.3",
-    "query-string": "^8.1.0",
+    "query-string": "^9.5.1",
     "react": "^19.2.5",
     "react-bootstrap": "^2.10.10",
     "react-copy-to-clipboard": "^5.1.0",
     "react-dom": "^19.2.5",
     "react-icons": "^5.5.0",
     "react-router-bootstrap": "^0.26.3",
-    "react-router-dom": "^6.30.4",
+    "react-router-dom": "^6.30.6",
     "underscore": "^1.13.7"
   },
    "scripts": {
